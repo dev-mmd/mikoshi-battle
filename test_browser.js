@@ -62,7 +62,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   // 全神輿様式の3D組み立てスモークテスト（WebGL無しでもジオメトリ構築は実行できる）
   const smoke = window.__mikoshiTest.buildAllVariants();
-  ok(smoke.length === 7, '3D smoke: all 7 variants assemble: ' + smoke.join(' '));
+  ok(smoke.length === 9, '3D smoke: all 9 variants assemble: ' + smoke.join(' '));
 
   click('titleStartBtn');
   await until(() => active() === 'screen-login', 3000, 'login');

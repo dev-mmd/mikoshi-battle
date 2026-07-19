@@ -83,6 +83,35 @@ node test_e2e.js      # 実WebSocket×4クライアント: PvP/協力/連戦/ガ
 node test_browser.js  # 実クライアントHTML(jsdom)を実サーバーに接続した通しテスト
 ```
 
+## 外部連携API（課金・ランキング・報酬システム接続用）
+
+外部サービスからゲームのデータを読み書きするためのAPIです。書き込み系は環境変数 `API_KEY` を設定した上で、リクエストヘッダー `X-Api-Key` に同じ値を付けたものだけが通ります。
+
+| メソッド | パス | 認証 | 説明 |
+|---|---|---|---|
+| GET | `/api/ranking` | 不要 | 勝利数順の上位20人（rank / id / name / wins / coins） |
+| GET | `/api/players/:id` | `X-Api-Key` | プレイヤーの残高・戦績・所持衣装の照会 |
+| POST | `/api/coins/grant` | `X-Api-Key` | コイン付与。`{"playerId":"p〜","amount":100,"reason":"購入特典"}`。付与されると本人の画面に即時通知される |
+
+```bash
+# 例: ランキング取得
+curl https://あなたのURL/api/ranking
+
+# 例: コイン付与（課金システムの決済完了後などに呼ぶ）
+curl -X POST https://あなたのURL/api/coins/grant \
+  -H "Content-Type: application/json" -H "X-Api-Key: あなたのAPI_KEY" \
+  -d '{"playerId":"p1a2b3c4d5e6","amount":100,"reason":"購入特典"}'
+```
+
+さらに、環境変数 `WEBHOOK_URL` を設定すると、**試合が確定するたびに**その URL へ結果がPOSTされます（報酬集計・外部ランキング反映向け）。ヘッダー `X-Webhook-Secret` に環境変数 `WEBHOOK_SECRET` の値が入るので、受信側で照合してください。
+
+```json
+{ "event": "matchSettled", "at": "…", "teams": [ { "name": "雷神会", "win": true, "power": 55,
+    "players": [ { "id": "p…", "name": "たろう", "coins": 45, "wins": 3 } ] } ] }
+```
+
+関連の環境変数: `API_KEY`（外部API認証）/ `WEBHOOK_URL`・`WEBHOOK_SECRET`（試合結果の外部通知）
+
 ## 制約・今後の拡張
 
 - 単一インスタンス前提（ルーム状態はメモリ）。水平スケールにはRedis等の共有ストアが必要
