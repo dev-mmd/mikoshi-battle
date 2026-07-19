@@ -6,18 +6,18 @@
 <title>せーの！神輿バトル</title>
 <style>
 :root{
-  --sky-1:#453a83;
-  --sky-2:#332c63;
-  --sky-3:#251e4a;
+  --sky-1:#38366a;
+  --sky-2:#292750;
+  --sky-3:#1b1a38;
   --shu:#d8492c; --shu-deep:#a82c16; --shu-hi:#ff6a42;
   --kin-1:#f9e6a0; --kin-2:#dcae48; --kin-3:#94701f;
   --kinari:#f7f0de;
-  --fuji:#c3bde6;
+  --fuji:#b7b5d2;
   --line:rgba(224,182,84,.34);
   --line-soft:rgba(224,182,84,.16);
-  --panel:rgba(38,30,74,.72);
-  --panel-hi:rgba(52,42,96,.72);
-  --scrim:rgba(20,14,42,.66);
+  --panel:rgba(32,29,62,.74);
+  --panel-hi:rgba(44,40,84,.74);
+  --scrim:rgba(17,14,36,.68);
   --radius:16px;
   --serif:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
   --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
@@ -226,8 +226,13 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
 .result-overlay.show{ opacity:1; }
 .result-card{ text-align:center; width:100%; max-width:344px; padding:30px 24px; }
 .judgement-badge{ position:relative; margin-bottom:12px; }
-.judge-emoji{ display:block; font-size:44px; }
-.judge-label{ display:block; font-family:var(--serif); font-size:28px; font-weight:800; color:var(--jcolor,var(--kin-2)); margin-top:4px; letter-spacing:.04em; }
+.judge-emoji{ display:none; }
+.judge-label{ display:block; font-family:var(--serif); font-size:36px; font-weight:800; color:var(--jcolor,var(--kin-2)); margin-top:4px; letter-spacing:.04em; text-shadow:0 2px 14px rgba(12,6,30,.6); }
+.item-chip{ display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:50%;
+  background:radial-gradient(circle at 32% 28%, rgba(255,255,255,.32), transparent 42%), var(--c,#6a739e);
+  color:#fff; font-family:var(--serif); font-weight:800; font-size:17px; flex-shrink:0;
+  box-shadow:0 0 0 2px rgba(247,240,222,.22), 0 4px 10px rgba(10,6,24,.45); text-shadow:0 1px 3px rgba(0,0,0,.5); }
+.item-chip.big{ width:64px; height:64px; font-size:28px; }
 .sync-detail{ font-size:14px; margin:8px 0; color:var(--kinari); line-height:1.7; }
 .power-gained{ font-family:var(--serif); color:var(--kin-1); font-weight:800; font-size:20px; margin:2px 0; }
 .medal-gained{ color:var(--fuji); font-size:12px; margin:0 0 18px; min-height:16px; }
@@ -412,9 +417,10 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   <section id="screen-teamselect" class="screen">
     <div class="crest-eyebrow rv" style="--d:.05s"><span>チームに参加</span></div>
     <h2 class="display rv" style="--d:.12s;font-size:23px;margin-bottom:6px;">どの連で担ぐ？</h2>
-    <button id="teamRefreshBtn" type="button" class="btn-text rv" style="--d:.18s;align-self:center;margin-bottom:8px;">🔄 連の一覧を更新</button>
+    <button id="teamRefreshBtn" type="button" class="btn-text rv" style="--d:.18s;align-self:center;margin-bottom:8px;">連の一覧を更新</button>
     <div class="team-grid" id="teamGrid"></div>
     <button id="teamConfirmBtn" type="button" class="btn-gold btn-large rv" style="--d:.3s;margin-top:10px;">このチームで参加する</button>
+    <button id="teamMypageBtn" type="button" class="btn-text rv" style="--d:.4s;align-self:center;">マイページ（コイン・衣装）を見る</button>
   </section>
 
   <section id="screen-lobby" class="screen">
@@ -427,7 +433,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       </div>
       <div class="member-row" id="lobbyMemberRow"></div>
       <div class="join-feed" id="lobbyJoinFeed"></div>
-      <p class="bonus-toast" id="lobbyBonusToast">⛩ エントリー受付完了</p>
+      <p class="bonus-toast" id="lobbyBonusToast">エントリー受付完了</p>
       <button id="lobbyReadyBtn" type="button" class="btn-gold btn-large rv" style="--d:.4s;max-width:290px;margin-top:14px;">準備完了</button>
     </div>
   </section>
@@ -450,7 +456,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     </header>
     <div class="mikoshi-live-area">
       <div class="build-meter" id="buildMeter">
-        <div class="build-meter-row"><span id="buildCount">🔥 タップ 0</span><span id="buildNext"></span></div>
+        <div class="build-meter-row"><span id="buildCount">タップ 0</span><span id="buildNext"></span></div>
         <div class="build-meter-track"><div class="build-meter-fill" id="buildFill"></div></div>
       </div>
       <div class="mikoshi-live-label" id="mikoshiLiveLabel">あなたのお神輿</div>
@@ -533,9 +539,9 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       <div class="result-stat panel"><div class="result-stat-num gold-text" id="mypageCostumes"></div><div class="result-stat-label">所持衣装</div></div>
     </div>
     <p class="stage-label-overlay rv" style="--d:.28s" id="mypageMikoshi"></p>
-    <button id="mypageGachaBtn" type="button" class="btn-gold btn-large rv" style="--d:.35s;margin-top:8px;">🎁 衣装ガチャを引く</button>
-    <button id="mypageAvatarBtn" type="button" class="btn-lacquer btn-large rv" style="--d:.42s;margin-top:10px;">👤 マイアバターを見る</button>
-    <button id="mypageRetryBtn" type="button" class="btn-gold btn-large rv" style="--d:.5s;margin-top:10px;">⛩ 次のトーナメントへ</button>
+    <button id="mypageGachaBtn" type="button" class="btn-gold btn-large rv" style="--d:.35s;margin-top:8px;">衣装ガチャを引く</button>
+    <button id="mypageAvatarBtn" type="button" class="btn-lacquer btn-large rv" style="--d:.42s;margin-top:10px;">マイアバターを見る</button>
+    <button id="mypageRetryBtn" type="button" class="btn-gold btn-large rv" style="--d:.5s;margin-top:10px;">次のトーナメントへ</button>
     <div style="flex:1;"></div>
   </section>
 
@@ -552,7 +558,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
         <div class="gacha-avatar-name" id="gachaAvatarName"></div>
         <span class="gacha-rarity-badge" id="gachaAvatarRarity"></span>
       </div>
-      <button id="gachaDrawBtn" type="button" class="btn-gold btn-large rv" style="--d:.35s;max-width:290px;margin-top:16px;">🪙10コインで衣装ガチャ</button>
+      <button id="gachaDrawBtn" type="button" class="btn-gold btn-large rv" style="--d:.35s;max-width:290px;margin-top:16px;">10コインで衣装ガチャを引く</button>
       <button id="gachaToEquipBtn" type="button" class="btn-gold btn-large hidden" style="max-width:290px;margin-top:10px;">アバターに着せる</button>
       <p class="gacha-rates rv" style="--d:.45s">排出率　SSR 1%　SR 9%　R 30%　N 60%</p>
       <button id="gachaBackBtn" type="button" class="btn-text rv" style="--d:.55s">マイページへ戻る</button>
@@ -574,6 +580,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 (function(){
   'use strict';
@@ -603,7 +610,9 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     rokkaku:{ label:'六角', svgRoof:'#b8912f', svgBody:'#f1cf6b' },
     hakkaku:{ label:'八角', svgRoof:'#14101e', svgBody:'#6b5a2a' },
     shinmei:{ label:'白木', svgRoof:'#8a6a3e', svgBody:'#e8d8b0' },
-    futon:{ label:'布団', svgRoof:'#c9321f', svgBody:'#2a2038' }
+    futon:{ label:'布団', svgRoof:'#c9321f', svgBody:'#2a2038' },
+    chousa:{ label:'ちょうさ', svgRoof:'#b0202a', svgBody:'#1c1626' },
+    dashi:{ label:'山車', svgRoof:'#1e1838', svgBody:'#8c2f1f' }
   };
   /* 3D形状パラメータ: sides=胴と屋根の面数, roof=屋根形式, finial=頂上飾り */
   var MIKOSHI_SHAPES={
@@ -613,7 +622,9 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     rokkaku:{ sides:6, roof:'curved', finial:'phoenix' },
     hakkaku:{ sides:8, roof:'curved', finial:'phoenix' },
     shinmei:{ sides:4, roof:'gable', finial:'chigi' },
-    futon:{ sides:4, roof:'futon', finial:'giboshi' }
+    futon:{ sides:4, roof:'futon', finial:'giboshi' },
+    chousa:{ sides:4, roof:'chousa', finial:'giboshi' },
+    dashi:{ sides:4, roof:'dashi', finial:'none' }
   };
   var PRESET_TEAMS=[
     { name:'湊組', size:12, skill:'mid', variant:'classic' },
@@ -1116,6 +1127,61 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     });
     return g;
   }
+  /* ちょうさ（香川・観音寺型太鼓台）: 深紅の布団5段＋金の布団締め＋房 */
+  function buildChousaRoof(){
+    var g=new THREE.Group();
+    var futonM=new THREE.MeshStandardMaterial({ color:0x9c1420, roughness:0.55, envMap:ENVCUBE, envMapIntensity:0.55, emissive:0x260408, emissiveIntensity:0.3 });
+    var strapM=brightGold();
+    for(var i=0;i<5;i++){
+      var w=1.52-i*0.08, d=1.26-i*0.07, y=0.3+i*0.14;
+      var f=new THREE.Mesh(new THREE.BoxGeometry(w,0.125,d), futonM);
+      f.position.y=y; g.add(f);
+    }
+    /* 布団締め: 最上段に金の十字帯 */
+    var topY=0.3+4*0.14, topW=1.52-4*0.08, topD=1.26-4*0.07;
+    var strapX=new THREE.Mesh(new THREE.BoxGeometry(topW+0.04,0.05,0.16), strapM);
+    strapX.position.y=topY+0.07; g.add(strapX);
+    var strapZ=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.05,topD+0.04), strapM);
+    strapZ.position.y=topY+0.07; g.add(strapZ);
+    /* 四隅の黒房と、軒下の金糸フリンジ */
+    var fusaM=new THREE.MeshStandardMaterial({ color:0x1a1420, roughness:0.85 });
+    [[0.74,0.61],[-0.74,0.61],[0.74,-0.61],[-0.74,-0.61]].forEach(function(p){
+      var fusa=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.065,0.3,7), fusaM);
+      fusa.position.set(p[0],0.22,p[1]); g.add(fusa);
+    });
+    for(var k=0;k<10;k++){
+      var fr=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.01,0.16,4), strapM);
+      fr.position.set(-0.63+k*0.14,0.2,0.64); g.add(fr);
+      var fr2=fr.clone(); fr2.position.z=-0.64; g.add(fr2);
+    }
+    return g;
+  }
+  /* 山車の上層＋車輪（曳き山: 二層構造・大きな木車） */
+  function buildDashiParts(black, red, gold){
+    var g=new THREE.Group();
+    /* 上層の櫓 */
+    var upper=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.42,0.5), red);
+    upper.position.y=0.5; g.add(upper);
+    [[0.28,0.22],[-0.28,0.22],[0.28,-0.22],[-0.28,-0.22]].forEach(function(p){
+      var pil=new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.028,0.44,8), gold);
+      pil.position.set(p[0],0.5,p[1]); g.add(pil);
+    });
+    var upperRoof=buildCurvedRoof(black,4);
+    upperRoof.scale.set(0.62,0.6,0.5); upperRoof.position.y=0.72; g.add(upperRoof);
+    /* 上層の欄干 */
+    var rail=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.03,0.6), gold);
+    rail.position.y=0.31; g.add(rail);
+    /* 大きな木製車輪4つ */
+    var wheelM=new THREE.MeshStandardMaterial({ color:0x4a3320, roughness:0.8, envMap:ENVCUBE, envMapIntensity:0.3 });
+    var hubM=brightGold();
+    [[0.62,0.64],[-0.62,0.64],[0.62,-0.64],[-0.62,-0.64]].forEach(function(p){
+      var wheel=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.08,14), wheelM);
+      wheel.rotation.x=Math.PI/2; wheel.position.set(p[0],-0.85,p[1]); g.add(wheel);
+      var hub=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.1,10), hubM);
+      hub.rotation.x=Math.PI/2; hub.position.set(p[0],-0.85,p[1]); g.add(hub);
+    });
+    return g;
+  }
   /* 擬宝珠（玉ねぎ形の頂上飾り） */
   function buildGiboshi(){
     var g=new THREE.Group(), m=brightGold();
@@ -1392,6 +1458,12 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     } else if(opts.variant==='futon'){
       /* 布団太鼓: 朱の座布団×黒漆の櫓 */
       roofMat=red; bodyMat=black;
+    } else if(opts.variant==='chousa'){
+      /* ちょうさ（香川・観音寺の太鼓台）: 深紅の布団締め×金糸 */
+      roofMat=red; bodyMat=black;
+    } else if(opts.variant==='dashi'){
+      /* 山車: 朱塗りの二層構造＋車輪 */
+      roofMat=black; bodyMat=red;
     } else {
       roofMat=black; bodyMat=latticeGold();
     }
@@ -1439,8 +1511,12 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       cnr.position.set(p[0],-0.77,p[1]); root.add(cnr);
     });
 
-    /* --- 玉垣 --- */
-    var fence=buildTamagaki(gold); fence.position.y=-0.47; root.add(fence);
+    /* --- 玉垣（ビルドアップで解放される標準装飾） --- */
+    var fenceGroup=new THREE.Group();
+    var fence=buildTamagaki(gold); fence.position.y=-0.47; fenceGroup.add(fence);
+    root.add(fenceGroup);
+    var fineryGroup=new THREE.Group(); root.add(fineryGroup); /* 細かい金具類 */
+    var ropesGroup=new THREE.Group(); root.add(ropesGroup);   /* 飾り紐・房・鈴 */
 
     /* --- 胴 (shrine body): 四角柱 or 多角柱（六角・八角） --- */
     var bodyRot=Math.PI/2-Math.PI/sides; /* 平らな面が正面(+z)を向く回転 */
@@ -1502,15 +1578,15 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     var finialSlot=new THREE.Group(); finialSlot.name='finialSlot'; finialSlot.position.y=0.945;
     if(shape.roof==='curved'){
       if(sides===4){
-        var masugumi=buildMasugumi(0.5,0.4,0.16,gold); root.add(masugumi);
+        var masugumi=buildMasugumi(0.5,0.4,0.16,gold); fineryGroup.add(masugumi);
         var eave=new THREE.Mesh(new THREE.BoxGeometry(1.66,0.06,1.34), black); eave.position.y=0.22; root.add(eave);
-        var eaveTrim=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.028,1.38), bg); eaveTrim.position.y=0.258; root.add(eaveTrim);
-        root.add(buildEaveMedallions(0.845,0.685,0.22,bg));
+        var eaveTrim=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.028,1.38), bg); eaveTrim.position.y=0.258; fineryGroup.add(eaveTrim);
+        fineryGroup.add(buildEaveMedallions(0.845,0.685,0.22,bg));
       } else {
         var eg=new THREE.CylinderGeometry(0.94,0.94,0.06,sides); eg.rotateY(bodyRot);
         var eaveP=new THREE.Mesh(eg, black); eaveP.position.y=0.22; root.add(eaveP);
         var etg=new THREE.CylinderGeometry(0.97,0.97,0.028,sides); etg.rotateY(bodyRot);
-        var eaveTrimP=new THREE.Mesh(etg, bg); eaveTrimP.position.y=0.258; root.add(eaveTrimP);
+        var eaveTrimP=new THREE.Mesh(etg, bg); eaveTrimP.position.y=0.258; fineryGroup.add(eaveTrimP);
       }
       var rsx=(sides===4)?1.0:0.92, rsy=0.95, rsz=(sides===4)?0.8:0.78;
       var roof=buildCurvedRoof(roofMat, sides); roof.position.y=0.24; roof.scale.set(rsx,rsy,rsz); root.add(roof);
@@ -1537,8 +1613,15 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       finialSlot.position.y=1.3; /* 千木は屋根組み込み。スロットは空のまま上に */
     } else if(shape.roof==='futon'){
       var eaveF=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.06,1.24), black); eaveF.position.y=0.22; root.add(eaveF);
-      var eaveFT=new THREE.Mesh(new THREE.BoxGeometry(1.54,0.026,1.28), bg); eaveFT.position.y=0.258; root.add(eaveFT);
+      var eaveFT=new THREE.Mesh(new THREE.BoxGeometry(1.54,0.026,1.28), bg); eaveFT.position.y=0.258; fineryGroup.add(eaveFT);
       var futonRoof=buildFutonRoof(); futonRoof.position.y=0.06; root.add(futonRoof);
+    } else if(shape.roof==='chousa'){
+      var eaveC=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.06,1.24), black); eaveC.position.y=0.22; root.add(eaveC);
+      var chousaRoof=buildChousaRoof(); chousaRoof.position.y=0.06; root.add(chousaRoof);
+      finialSlot.position.y=1.06;
+    } else if(shape.roof==='dashi'){
+      var eaveD=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.06,1.2), black); eaveD.position.y=0.22; root.add(eaveD);
+      root.add(buildDashiParts(black, red, gold));
     }
     if(shape.finial==='phoenix') finialSlot.add(buildPhoenix());
     else if(shape.finial==='giboshi') finialSlot.add(buildGiboshi());
@@ -1554,11 +1637,11 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
         new THREE.Vector3(sx*1.22,-0.18,sz*1.06),
         new THREE.Vector3(sx*1.1,-0.52,sz*0.88)
       ]);
-      root.add(new THREE.Mesh(new THREE.TubeGeometry(curve,14,0.03,7,false),ropeMat));
+      ropesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(curve,14,0.03,7,false),ropeMat));
       var tas=buildTassel(ropeMat);
-      tas.position.set(sx*1.1,-0.56,sz*0.88); root.add(tas);
+      tas.position.set(sx*1.1,-0.56,sz*0.88); ropesGroup.add(tas);
       var bell=new THREE.Mesh(new THREE.SphereGeometry(0.045,9,9),bg);
-      bell.position.set(sx*1.22,-0.24,sz*1.06); root.add(bell);
+      bell.position.set(sx*1.22,-0.24,sz*1.06); ropesGroup.add(bell);
     });
 
     /* --- growth stages --- */
@@ -1712,7 +1795,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
         curtainGroup:curtainGroup, curtainMat:curtainMat, teamName:opts.teamName||'チーム',
         trimGroup:trimGroup, flameGroup:flameGroup, flameParticles:flameParticles,
         finialSlot:finialSlot, extraSlot:extraSlot, buildupGroups:buildupGroups,
-        carrierGroup:carrierGroup
+        carrierGroup:carrierGroup,
+        fenceGroup:fenceGroup, fineryGroup:fineryGroup, ropesGroup:ropesGroup
       }
     };
   }
@@ -1726,23 +1810,38 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       c.rotation.z=Math.sin(tSec*7+c.userData.stepPhase)*0.06*(intensity||1);
     }
   }
-  /* タップ累計ビルドアップの段階しきい値とラベル */
+  /* タップ累計ビルドアップの段階しきい値とラベル。
+   * トーナメント全体（3試合・最大72タップ前後）で育ち切る配分。連戦するほど豪華になる */
   var BUILD_TIERS=[
-    { taps:3,  label:'小提灯が灯った！' },
-    { taps:6,  label:'金の綱が巻かれた！' },
-    { taps:10, label:'祭り幟が立った！' },
-    { taps:14, label:'軒に風鈴が並んだ！' },
-    { taps:18, label:'金吹雪が舞い上がる！' },
-    { taps:24, label:'御神光、降臨！！' }
+    { taps:4,  label:'玉垣が組まれた！' },
+    { taps:9,  label:'小提灯が灯った！' },
+    { taps:16, label:'飾り紐と房が結ばれた！' },
+    { taps:24, label:'金具が輝き、幟が立った！' },
+    { taps:34, label:'風鈴と金綱が飾られた！' },
+    { taps:46, label:'金吹雪が舞い上がる！' },
+    { taps:60, label:'御神光、降臨！！' }
   ];
   function buildTierForTaps(n){
     var t=0;
     for(var i=0;i<BUILD_TIERS.length;i++) if(n>=BUILD_TIERS[i].taps) t=i+1;
     return t;
   }
+  /* tier 0=素の神輿（しょぼい）→ 7=フル装飾。
+   * 標準装飾（玉垣・提灯・紐・金具）→追加飾り（幟・風鈴・金綱・吹雪・光柱）の順で増える */
   function setMikoshiBuildup(parts, tier){
-    if(!parts || !parts.buildupGroups) return;
-    parts.buildupGroups.forEach(function(g,i){ g.visible=(i<tier); });
+    if(!parts) return;
+    if(parts.fenceGroup) parts.fenceGroup.visible=tier>=1;
+    if(parts.ropesGroup) parts.ropesGroup.visible=tier>=3;
+    if(parts.fineryGroup) parts.fineryGroup.visible=tier>=4;
+    if(parts.finialSlot){
+      var fs=0.55+0.45*Math.min(1,tier/4);
+      parts.finialSlot.scale.setScalar(fs);
+    }
+    if(parts.buildupGroups){
+      /* 追加飾り: tier2で提灯の輪, 4で幟, 5で風鈴+金綱, 6で金吹雪, 7で御神光 */
+      var extra=[tier>=2, tier>=5, tier>=4, tier>=5, tier>=6, tier>=7];
+      parts.buildupGroups.forEach(function(g,i){ g.visible=!!extra[i]; });
+    }
   }
   function levelScale(l){ return 1+(l||0)*0.09; }
   function setMikoshiStage(parts, stage){
@@ -1951,9 +2050,9 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   function makeSkyTexture(){
     var cv=makeCanvas(64,256), cx=cv.getContext('2d');
     var g=cx.createLinearGradient(0,0,0,256);
-    g.addColorStop(0,'#3a3272');
-    g.addColorStop(0.42,'#584a94');
-    g.addColorStop(0.62,'#8a6292');
+    g.addColorStop(0,'#302d5c');
+    g.addColorStop(0.42,'#484278');
+    g.addColorStop(0.62,'#7c5a80');
     g.addColorStop(0.74,'#d8845a');
     g.addColorStop(0.82,'#f0a860');
     g.addColorStop(0.88,'#6a4a48');
@@ -1963,7 +2062,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   }
   function makeGroundTexture(){
     var cv=makeCanvas(512,512), cx=cv.getContext('2d');
-    cx.fillStyle='#57506b'; cx.fillRect(0,0,512,512);
+    cx.fillStyle='#545062'; cx.fillRect(0,0,512,512);
     /* ishidatami flagstones */
     var S=64;
     for(var r=0;r<8;r++){
@@ -2199,8 +2298,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     camera.aspect=w/h; camera.updateProjectionMatrix();
   }
   function setupLights(){
-    scene.add(new THREE.AmbientLight(0x8a7fc0,0.55));
-    scene.add(new THREE.HemisphereLight(0x8a7fd0,0x6a4530,0.9));
+    scene.add(new THREE.AmbientLight(0x767199,0.55));
+    scene.add(new THREE.HemisphereLight(0x7671a2,0x6a4530,0.9));
     var key=new THREE.DirectionalLight(0xfff0d6,1.5); key.position.set(3.2,6,4.2);
     key.castShadow=true;
     key.shadow.mapSize.width=1024; key.shadow.mapSize.height=1024;
@@ -2333,6 +2432,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
     threeCanvas.classList.remove('show');
     matchParts=null; viewerParts=null;
+    if(camera && camera.fov!==50){ camera.fov=50; camera.updateProjectionMatrix(); } /* 対戦用の広角をリセット */
   }
   function applyEquippedAvatars(parts){
     state.ownedAvatars.forEach(function(av){ if(state.equippedKeys[av.key]) equipAvatarOnMikoshi(parts, av); });
@@ -2379,7 +2479,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     var ls=liveSyncStage();
     if(matchParts) setMikoshiStage(matchParts, ls.stage);
     mikoshiLiveLabel.classList.remove('pop'); void mikoshiLiveLabel.offsetWidth; mikoshiLiveLabel.classList.add('pop');
-    mikoshiLiveLabel.textContent='⚡ 同時シンクロ '+ls.best+'人！';
+    mikoshiLiveLabel.textContent='同時シンクロ '+ls.best+'人！';
   }
   function matchViewerRoundSettled(){
     if(matchParts) setMikoshiStage(matchParts, state.mikoshiLevel||0);
@@ -2390,7 +2490,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   function enterBattleMode(onDone){
     if(!threeReady){ setTimeout(onDone,300); return; }
     clearScene(); setupLights();
-    scene.fog=new THREE.Fog(0x4a3e78, 11.5, 27);
+    scene.fog=new THREE.Fog(0x413a66, 11.5, 27);
     var envG=buildShrineEnvironment();
     scene.add(envG);
     var crowdG=envG.getObjectByName('crowd');
@@ -2410,7 +2510,11 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     setMikoshiBuildup(eBuild.parts, Math.min(BUILD_TIERS.length, Math.round((state.enemyPower/Math.max(1,state.enemySize*ROUNDS))*BUILD_TIERS.length)));
     var pLS=levelScale(state.mikoshiLevel), eLS=levelScale(state.enemyLevel);
     scene.add(pBuild.root, eBuild.root);
-    camera.position.set(0,1.5,6.0); camera.lookAt(0,0.1,0);
+    /* スマホ縦画面では横の視野が狭く両チームが見切れるため、視野を広げつつカメラを引く */
+    var portrait=(camera.aspect||1)<0.9;
+    var RAD_SCALE=portrait?1.75:1.0;
+    camera.fov=portrait?64:50; camera.updateProjectionMatrix();
+    camera.position.set(0,1.5,6.0*RAD_SCALE); camera.lookAt(0,0.1,0);
     threeCanvas.classList.add('show');
 
     var director=createBattleDirector(state.battleWinnerSide);
@@ -2457,7 +2561,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       shadowP.position.x=s.playerX; shadowE.position.x=s.enemyX;
       shadowP.material.opacity=clamp01(1.1-(s.playerY+carryBobP+sashiP));
       shadowE.material.opacity=clamp01(1.1-(s.enemyY+carryBobE+sashiE));
-      var camX=Math.sin(s.cameraAngle)*s.cameraRadius, camZ=Math.cos(s.cameraAngle)*s.cameraRadius;
+      var camR=s.cameraRadius*RAD_SCALE;
+      var camX=Math.sin(s.cameraAngle)*camR, camZ=Math.cos(s.cameraAngle)*camR;
       camera.position.set(camX+(Math.random()-0.5)*s.shake, s.cameraHeight+(Math.random()-0.5)*s.shake+BASE_Y*0.5, camZ);
       camera.lookAt(s.cameraLookX, s.cameraLookY+BASE_Y*0.6, 0);
       battlePlayerBar.style.width=(s.raceProgress*Math.min(100, state.totalPower/(state.teamSize*ROUNDS)*100))+'%';
@@ -2602,38 +2707,68 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   /* ================= QR ================= */
   function buildQrGrid(){
     qrGrid.innerHTML='';
+    /* 本物のQRコード（このゲームのURL）。スマホのカメラで読み取ると同じゲームが開く */
+    try{
+      if(typeof qrcode!=='undefined'){
+        var qr=qrcode(0,'M');
+        qr.addData(location.origin);
+        qr.make();
+        var n=qr.getModuleCount();
+        qrGrid.style.gridTemplateColumns='repeat('+n+',1fr)';
+        qrGrid.style.gridTemplateRows='repeat('+n+',1fr)';
+        for(var r=0;r<n;r++){
+          for(var c=0;c<n;c++){
+            var cell=document.createElement('div'); cell.className='qr-cell';
+            if(qr.isDark(r,c)) cell.classList.add('on');
+            qrGrid.appendChild(cell);
+          }
+        }
+        return true;
+      }
+    }catch(e){}
+    /* QRライブラリが読み込めない環境では飾りのグリッドを表示 */
+    qrGrid.style.gridTemplateColumns='repeat(17,1fr)';
+    qrGrid.style.gridTemplateRows='repeat(17,1fr)';
     var N=17;
     function finder(r,c){ return (r<5&&c<5)||(r<5&&c>=N-5)||(r>=N-5&&c<5); }
-    for(var r=0;r<N;r++){
-      for(var c=0;c<N;c++){
-        var cell=document.createElement('div'); cell.className='qr-cell';
+    for(var r2=0;r2<N;r2++){
+      for(var c2=0;c2<N;c2++){
+        var cell2=document.createElement('div'); cell2.className='qr-cell';
         var on;
-        if(finder(r,c)){
-          var ir=r<5?r:r-(N-5), ic=c<5?c:c-(N-5);
+        if(finder(r2,c2)){
+          var ir=r2<5?r2:r2-(N-5), ic=c2<5?c2:c2-(N-5);
           on=(ir===0||ir===4||ic===0||ic===4||(ir===2&&ic===2));
         } else { on=Math.random()<0.42; }
-        if(on) cell.classList.add('on');
-        qrGrid.appendChild(cell);
+        if(on) cell2.classList.add('on');
+        qrGrid.appendChild(cell2);
       }
     }
+    return false;
   }
   function runQrSequence(){
     showScreen('screen-qr');
-    buildQrGrid();
-    qrCaption.textContent='店舗のQRコードを読み取り中…';
+    var real=buildQrGrid();
+    qrCaption.textContent= real
+      ? 'このQRを仲間が読み取ると、同じゲームがすぐ開きます'
+      : '読み取り中…';
     storeReveal.classList.remove('show');
     var done=false;
     function proceed(){ if(done) return; done=true; NET.send({t:'listTeams'}); showScreen('screen-teamselect'); }
     qrSkipBtn.onclick=proceed;
     setTimeout(function(){
-      qrCaption.textContent='読み取り完了！';
       storeReveal.classList.add('show');
-      setTimeout(proceed, 900);
+      setTimeout(proceed, real?2400:900);
     }, 1300);
   }
 
   /* ================= NET (WebSocket) ================= */
   function catalogByKey(k){ for(var i=0;i<AVATAR_CATALOG.length;i++) if(AVATAR_CATALOG[i].key===k) return AVATAR_CATALOG[i]; return AVATAR_CATALOG[0]; }
+  /* 衣装アイテムの丸型チップ表示（名前の頭文字＋レアリティ色 or アイテム色） */
+  var RARITY_CHIP={ N:'#6a739e', R:'#3e9fd8', SR:'#9a5fd8', SSR:'#d8a832' };
+  function itemChipHtml(avatar, big){
+    var col=avatar.color!==undefined ? '#'+('000000'+avatar.color.toString(16)).slice(-6) : (RARITY_CHIP[avatar.rarity]||'#6a739e');
+    return '<span class="item-chip'+(big?' big':'')+'" style="--c:'+col+'">'+escapeHtml(avatar.name.charAt(0))+'</span>';
+  }
   function judgementByKey(k){ for(var i=0;i<JUDGEMENTS.length;i++) if(JUDGEMENTS[i].key===k) return JUDGEMENTS[i]; return JUDGEMENTS[JUDGEMENTS.length-1]; }
   var NET=(function(){
     var ws=null, offset=0, samples=[], connected=false, backoff=800, handlers={};
@@ -2688,6 +2823,32 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
         '<rect x="26.5" y="30" width="7" height="11" fill="#c4a877" stroke="#7a5410" stroke-width=".8"/>'+
         '<rect x="7" y="46" width="46" height="3.2" rx="1.6" fill="#e8d8b0"/>'+
         '<circle cx="7.5" cy="47.6" r="2" fill="#c4a877"/><circle cx="52.5" cy="47.6" r="2" fill="#c4a877"/>'+
+        '</svg>';
+    }
+    if(variantKey==='dashi'){
+      /* 山車: 二層構造＋車輪 */
+      return '<svg class="team-mini-svg" viewBox="0 0 60 60">'+
+        '<ellipse cx="30" cy="54" rx="20" ry="2.6" fill="rgba(10,6,24,.4)"/>'+
+        '<path d="M30 4 C24 5.5 19 9 15 14 Q18 12 20.5 12.2 L30 10.5 L39.5 12.2 Q42 12 45 14 C41 9 36 5.5 30 4 Z" fill="'+v.svgRoof+'" stroke="#dcae48" stroke-width="1"/>'+
+        '<rect x="21" y="15" width="18" height="10" rx="1.2" fill="'+v.svgBody+'" stroke="#a87e22" stroke-width="1"/>'+
+        '<rect x="14" y="26" width="32" height="3" rx="1.5" fill="#e8c765"/>'+
+        '<rect x="16" y="29" width="28" height="15" rx="1.5" fill="'+v.svgBody+'" stroke="#a87e22" stroke-width="1"/>'+
+        '<circle cx="15" cy="48" r="6" fill="#4a3320" stroke="#2a1c10" stroke-width="1.2"/><circle cx="15" cy="48" r="1.8" fill="#e8c765"/>'+
+        '<circle cx="45" cy="48" r="6" fill="#4a3320" stroke="#2a1c10" stroke-width="1.2"/><circle cx="45" cy="48" r="1.8" fill="#e8c765"/>'+
+        '</svg>';
+    }
+    if(variantKey==='chousa'){
+      /* ちょうさ: 深紅の布団締め */
+      var cf='';
+      for(var ci=0;ci<5;ci++){ var cw=40-ci*4; cf+='<rect x="'+(30-cw/2)+'" y="'+(22-ci*4.4)+'" width="'+cw+'" height="4" rx="2" fill="'+v.svgRoof+'" stroke="#6a0e14" stroke-width=".7"/>'; }
+      return '<svg class="team-mini-svg" viewBox="0 0 60 60">'+
+        '<ellipse cx="30" cy="52.5" rx="20" ry="2.8" fill="rgba(10,6,24,.4)"/>'+
+        '<rect x="27.8" y="2" width="4.4" height="22" fill="#e8c765" opacity=".9"/>'+cf+
+        '<rect x="18" y="27" width="24" height="17" rx="1.5" fill="'+v.svgBody+'" stroke="#a87e22" stroke-width="1"/>'+
+        '<line x1="20" y1="30" x2="40" y2="30" stroke="#e8c765" stroke-width="1.4"/>'+
+        '<line x1="20" y1="41" x2="40" y2="41" stroke="#e8c765" stroke-width="1.4"/>'+
+        '<rect x="7" y="46" width="46" height="3.2" rx="1.6" fill="#1e1838"/>'+
+        '<circle cx="7.5" cy="47.6" r="2" fill="#e8c765"/><circle cx="52.5" cy="47.6" r="2" fill="#e8c765"/>'+
         '</svg>';
     }
     if(variantKey==='futon'){
@@ -2800,11 +2961,11 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       feed.innerHTML='';
       state.members.forEach(function(mb){
         var d=document.createElement('div');
-        d.textContent=(mb.ready?'✅ ':'🟢 ')+mb.name+(mb.pid===state.pid?'（あなた）':'')+(mb.ready?'：準備完了':'：参加中');
+        d.textContent=mb.name+(mb.pid===state.pid?'（あなた）':'')+(mb.ready?'：準備完了':'：参加中');
         feed.appendChild(d);
       });
       if((msg.botFill||0)>0){
-        var d2=document.createElement('div'); d2.textContent='🤖 サポーター'+msg.botFill+'人が自動で加勢します';
+        var d2=document.createElement('div'); d2.textContent='サポーター'+msg.botFill+'人が自動で加勢します';
         feed.appendChild(d2);
       }
     }
@@ -2820,16 +2981,16 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   }
   function onSearching(){
     lobbyReadyBtn.disabled=true;
-    lobbyReadyBtn.textContent='⚔ 対戦相手を探しています…';
+    lobbyReadyBtn.textContent='対戦相手を探しています…';
     var feed=$('lobbyJoinFeed');
-    if(feed){ var d=document.createElement('div'); d.style.color='#c3bde6'; d.textContent='⚔ 対戦相手を探しています…（見つからない時はライバル連が登場）'; feed.appendChild(d); }
+    if(feed){ var d=document.createElement('div'); d.style.color='#c3bde6'; d.textContent='対戦相手を探しています…（見つからない時はライバル連が登場）'; feed.appendChild(d); }
   }
   function onMatched(msg){
     state.enemyTeamName=msg.enemy.name; state.enemySize=msg.enemy.size;
     state.enemyVariant=msg.enemy.variant||'classic'; state.enemyLevel=msg.enemy.level||0;
     state.teamSize=msg.you.size; state.tourRound=msg.tour||0;
     var feed=$('lobbyJoinFeed');
-    if(feed){ var d=document.createElement('div'); d.style.color='#f1cf6b'; d.textContent='🛰 マッチング成立！ vs '+msg.enemy.name; feed.appendChild(d); }
+    if(feed){ var d=document.createElement('div'); d.style.color='#f1cf6b'; d.textContent='マッチング成立　vs '+msg.enemy.name; feed.appendChild(d); }
     if(state.needAd){
       state.needAd=false;
       startAdScreen(AD_SPONSORS[Math.floor(Math.random()*AD_SPONSORS.length)], '試合前の広告視聴', enterArena);
@@ -2882,7 +3043,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   /* タップ1回ごとに累計カウント→しきい値で神輿がビルドアップ */
   function updateBuildMeter(){
     if(!buildCountEl) return;
-    buildCountEl.textContent='🔥 タップ '+state.matchTaps;
+    buildCountEl.textContent='タップ '+state.matchTaps;
     var tier=state.buildTier;
     if(tier>=BUILD_TIERS.length){
       buildNextEl.textContent='最大まで豪華になった！';
@@ -2930,7 +3091,17 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     playerTapInfo.classList.remove('show'); playerTapInfo.textContent='';
     var cuePerf=performance.now()+(msg.cueAt-NET.serverNow());
     state.cuePerf=cuePerf; state.phase='ready';
-    countdownText.classList.add('show'); countdownText.textContent='じゅんび中…';
+    /* 「せーの！」の3秒前までは残り秒数をカウントダウン表示（終わったらタップ受付開始） */
+    var cdLabel=(msg.r===1)?'対戦開始まで':'次のタップまで';
+    countdownText.classList.add('show');
+    (function tickPre(){
+      var remainMs=cuePerf-performance.now();
+      if(state.phase!=='ready') return;
+      if(remainMs>1900){
+        countdownText.textContent=cdLabel+' あと'+Math.ceil(remainMs/1000)+'秒';
+        state.roundTimers.push(setTimeout(tickPre, 200));
+      }
+    })();
     function at(msBeforeCue, fn){
       var d=cuePerf-performance.now()-msBeforeCue;
       state.roundTimers.push(setTimeout(fn, Math.max(0,d)));
@@ -3031,7 +3202,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       ? (r.validCount+'人中 '+r.best+'人が同じ0.1秒にシンクロ！（同期率'+Math.round(r.pct*100)+'%）')
       : 'メンバーがタップできませんでした…';
     powerGained.textContent='+'+r.best+' パワー獲得';
-    medalGained.textContent = r.contributed ? '⭐ あなたはシンクロ成功！勝てばコインボーナス！' : '';
+    medalGained.textContent = r.contributed ? 'あなたはシンクロ成功！勝てばコインボーナス！' : '';
     nextRoundBtn.textContent = state.round<ROUNDS ? '次のラウンドへ' : '対戦へ進む';
     roundResultOverlay.classList.remove('hidden'); void roundResultOverlay.offsetWidth; roundResultOverlay.classList.add('show');
     updatePowerHeader();
@@ -3075,7 +3246,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     state.advancing=true;
     showScreen('screen-match');
     buildAvatarGrid();
-    mikoshiLiveLabel.textContent='🏆 '+TOUR_LABEL[Math.min(state.tourRound||0,2)]+'進出！ 🪙+'+coins+'獲得';
+    mikoshiLiveLabel.textContent=TOUR_LABEL[Math.min(state.tourRound||0,2)]+'進出！ +'+coins+'コイン獲得';
     enterMatchViewerMode();
     roundIndicatorEl.textContent=TOUR_LABEL[Math.min(state.tourRound||0,2)]+'｜次の対戦相手を探しています…';
     countdownText.classList.add('show'); countdownText.textContent='次の対戦相手を探しています…';
@@ -3102,7 +3273,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       setTimeout(function(){
         predictionSuspense.classList.add('hidden');
         var correct=Math.random()<0.5;
-        predictionResult.textContent = correct ? '🎯 的中！さすがの読み！' : '😅 残念、はずれでした…';
+        predictionResult.textContent = correct ? '的中！さすがの読み！' : '残念、はずれでした…';
         predictionResult.classList.add('show');
         predictionContinueBtn.classList.remove('hidden');
       }, 1100);
@@ -3115,19 +3286,20 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   function showResultScreen(){
     showScreen('screen-result');
     var champ = state.lastOutcome==='champion';
-    resultHeadline.textContent = champ ? '🏆 トーナメント優勝！！' : (TOUR_LABEL[Math.min(state.tourRound||0,2)]+' 敗退…');
+    resultHeadline.textContent = champ ? 'トーナメント優勝！！' : (TOUR_LABEL[Math.min(state.tourRound||0,2)]+' 敗退…');
     resultPower.textContent=state.totalPower;
     resultMedals.textContent='+'+(state.earnedThisTour||0);
     resultStageNote.innerHTML = champ
-      ? ('全'+(state.tourWins||0)+'勝で駆け上がった！ 勝利＋貢献ボーナスを獲得<br>⛩ 連の神輿：'+STAGE_LABEL[state.mikoshiLevel||0])
-      : (((state.tourWins||0)>0 ? ('ここまで'+(state.tourWins||0)+'勝、🪙+'+(state.earnedThisTour||0)+'獲得。') : 'コインは勝利＆貢献で獲得。')+'悔しさは次の祭りで！');
+      ? ('全'+(state.tourWins||0)+'勝で駆け上がった！ 勝利＋貢献ボーナスを獲得<br>連の神輿：'+STAGE_LABEL[state.mikoshiLevel||0])
+      : (((state.tourWins||0)>0 ? ('ここまで'+(state.tourWins||0)+'勝、+'+(state.earnedThisTour||0)+'コイン獲得。') : 'コインは勝利＆貢献で獲得。')+'悔しさは次の祭りで！');
     resultToGachaBtn.onclick=showMyPage;
   }
 
   /* ================= GACHA (server-authoritative) ================= */
   function showGachaScreen(){
     showScreen('screen-gacha');
-    gachaMedalBadge.textContent='🪙 所持コイン: '+state.totalMedals+'枚';
+    state.gachaBusy=false; /* 通信断などで引けなくなったまま固まるのを防ぐ */
+    gachaMedalBadge.textContent='所持コイン: '+state.totalMedals+'枚';
     gachaResultCard.classList.add('hidden');
     gachaToEquipBtn.classList.add('hidden');
     gachaCapsule.className='gacha-capsule';
@@ -3135,7 +3307,9 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     gachaDrawBtn.classList.remove('hidden');
     gachaDrawBtn.disabled = state.totalMedals<GACHA_COST;
     gachaDrawBtn.style.opacity = state.totalMedals<GACHA_COST ? '0.5' : '1';
-    if(state.totalMedals<GACHA_COST) gachaMedalBadge.textContent+='（コインは勝利＆貢献で獲得！）';
+    gachaDrawBtn.textContent = state.totalMedals<GACHA_COST
+      ? ('コインが足りません（あと'+(GACHA_COST-state.totalMedals)+'枚。勝利で+20）')
+      : (GACHA_COST+'コインで衣装ガチャを引く');
   }
   gachaDrawBtn.addEventListener('click', function(){
     if(state.totalMedals<GACHA_COST || state.gachaBusy) return;
@@ -3150,13 +3324,13 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     state.ownedAvatars.push(avatar);
     var rarity=msg.rarity;
     if(rarity==='SSR') SFX.ssr(); else SFX.tick();
-    gachaMedalBadge.textContent='🪙 所持コイン: '+state.totalMedals+'枚';
+    gachaMedalBadge.textContent='所持コイン: '+state.totalMedals+'枚';
     setTimeout(function(){
       gachaCapsule.classList.remove('shaking');
       gachaCapsule.classList.add('cracked');
       gachaGlow.className='gacha-glow show rarity-'+rarity.toLowerCase();
       setTimeout(function(){
-        gachaAvatarIcon.textContent=avatar.icon;
+        gachaAvatarIcon.innerHTML=itemChipHtml(avatar, true);
         gachaAvatarName.textContent=avatar.name;
         gachaAvatarRarity.textContent=avatar.rarity;
         gachaAvatarRarity.className='gacha-rarity-badge rarity-'+rarity.toLowerCase();
@@ -3183,14 +3357,14 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       var equipped=!!state.equippedKeys[avatar.key];
       var row=document.createElement('div');
       row.className='equip-row'+(idx===state.ownedAvatars.length-1?' is-new':'');
-      row.innerHTML='<span class="equip-icon">'+avatar.icon+'</span>'+
+      row.innerHTML=itemChipHtml(avatar)+
         '<span class="equip-name">'+escapeHtml(avatar.name)+' <span class="rar">('+avatar.rarity+')</span></span>'+
         (idx===state.ownedAvatars.length-1?'<span class="equip-new-badge">NEW</span>':'')+
         '<button type="button" class="btn-primary equip-btn'+(equipped?' is-equipped':'')+'">'+(equipped?'装備中':'装備する')+'</button>';
       var btn=row.querySelector('button');
       btn.addEventListener('click', function(){
-        if(!viewerParts || state.equippedKeys[avatar.key]) return;
-        equipCostume(viewerParts, avatar);
+        if(state.equippedKeys[avatar.key]) return;
+        if(viewerParts) equipCostume(viewerParts, avatar); /* 3D不可の端末でも装備自体はできる */
         state.equippedKeys[avatar.key]=true;
         NET.send({ t:'equip', key:avatar.key });
         renderEquipList();
@@ -3299,6 +3473,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   teamConfirmBtn.addEventListener('click', confirmTeamSelection);
   var trBtn=$('teamRefreshBtn');
   if(trBtn) trBtn.addEventListener('click', function(){ SFX.tick(); NET.send({t:'listTeams'}); });
+  var tmBtn=$('teamMypageBtn');
+  if(tmBtn) tmBtn.addEventListener('click', function(){ SFX.tick(); showMyPage(); });
   lobbyReadyBtn.addEventListener('click', function(){
     SFX.tick();
     state.tourWins=0; state.earnedThisTour=0; state.needAd=true;
@@ -3323,6 +3499,13 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     showToast(msg.msg||'エラーが発生しました');
     if(state.awaitingWelcome){ state.awaitingWelcome=false; joinBtn.disabled=false; joinBtn.textContent='オンラインで参加'; }
     if(msg.code==='coins'){ state.gachaBusy=false; showGachaScreen(); }
+    if(msg.code==='auth'){
+      /* サーバー再起動などで本人確認が切れた場合はログインからやり直す */
+      state.pid=null; state.gachaBusy=false;
+      stopSceneRendering();
+      showScreen('screen-login');
+      showToast('接続し直します。もう一度ログインしてください');
+    }
   });
   NET.on('teams', function(msg){
     state.teamList=msg.list||[];
@@ -3338,6 +3521,13 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   NET.on('battle', startBattlePhase);
   NET.on('settle', function(msg){ state.pendingSettle=msg; if(state.battleAnimDone) applySettle(); });
   NET.on('gachaResult', handleGachaResult);
+  NET.on('coinsUpdate', function(msg){
+    state.totalMedals=msg.coins;
+    showToast('+'+msg.gained+'コインを受け取りました'+(msg.reason?('（'+msg.reason+'）'):''));
+    var a=document.querySelector('.screen.active');
+    if(a && a.id==='screen-gacha') showGachaScreen();
+    if(a && a.id==='screen-mypage') showMyPage();
+  });
   NET.on('equipped', function(msg){
     state.equippedKeys={};
     (msg.equipped||[]).forEach(function(k){ state.equippedKeys[k]=true; });

@@ -19,8 +19,9 @@ const JUDGEMENTS = [
 ];
 const TEAM_NAME_POOL = ['雷神会','龍虎睦','疾風連','朱雀組','黄金衆','豪傑連','不知火睦','阿吽組','花火連','千年睦'];
 /* 神輿の様式（クライアント public/index.html の MIKOSHI_VARIANTS と必ず一致させる）
- * classic=江戸型黄金 / kuro=漆黒 / shiro=白鳳 / rokkaku=京・六角 / hakkaku=八角 / shinmei=神明白木 / futon=布団太鼓 */
-const VARIANTS = ['classic', 'kuro', 'shiro', 'rokkaku', 'hakkaku', 'shinmei', 'futon'];
+ * classic=江戸型黄金 / kuro=漆黒 / shiro=白鳳 / rokkaku=京・六角 / hakkaku=八角 / shinmei=神明白木
+ * futon=布団太鼓 / chousa=ちょうさ(金糸太鼓台) / dashi=山車(車輪付き二層) */
+const VARIANTS = ['classic', 'kuro', 'shiro', 'rokkaku', 'hakkaku', 'shinmei', 'futon', 'chousa', 'dashi'];
 const CATALOG = [
   { key:'happiAo', rarity:'N' }, { key:'happiMidori', rarity:'N' }, { key:'happiMurasaki', rarity:'N' },
   { key:'happiShu', rarity:'N' }, { key:'shiroHachimaki', rarity:'N' }, { key:'festivalFan', rarity:'N' },
@@ -363,6 +364,18 @@ function settle(m, aWins, powerA, powerB) {
     }
   }
   savePlayersSoon();
+  postMatchWebhook({
+    event: 'matchSettled',
+    at: new Date().toISOString(),
+    teams: sides.map(({ room, win, power }) => ({
+      name: room.name, win, power, streak: room.streak,
+      players: [...room.players].map(pid => {
+        const p = players.get(pid);
+        return p ? { id: p.id, name: p.name, coins: p.coins, wins: p.wins } : null;
+      }).filter(Boolean)
+    })),
+    bot: m.bot ? { name: m.bot.name } : null
+  });
   const contRooms = m.rooms.filter(r => r.pendingContinue);
   finishMatch(m);
   for (const room of contRooms) {
@@ -403,6 +416,57 @@ const app = express();
 app.use((req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); next(); });
 app.get('/healthz', (req, res) => res.json({ ok: true, players: players.size, rooms: rooms.size, matches: matches.size }));
 app.get('/auth-config', (req, res) => res.json({ googleClientId: GOOGLE_CLIENT_ID || null }));
+
+/* ================= 外部連携API =================
+ * 課金・ランキング・報酬システムなど外部サービスとの接続用。
+ * 書き込み系・個人データ系は環境変数 API_KEY を設定した上で、
+ * リクエストヘッダー X-Api-Key に同じ値を付けたものだけ受け付ける。 */
+const API_KEY = process.env.API_KEY || '';
+const WEBHOOK_URL = process.env.WEBHOOK_URL || '';
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
+app.use(express.json({ limit: '16kb' }));
+function requireApiKey(req, res, next) {
+  if (!API_KEY) return res.status(503).json({ error: 'API_KEY not configured' });
+  if (req.get('X-Api-Key') !== API_KEY) return res.status(401).json({ error: 'unauthorized' });
+  next();
+}
+/* ランキング（公開・読み取り専用）: 勝利数→コインの順で上位20人 */
+app.get('/api/ranking', (req, res) => {
+  const list = [...players.values()]
+    .sort((a, b) => (b.wins - a.wins) || (b.coins - a.coins))
+    .slice(0, 20)
+    .map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, wins: p.wins, coins: p.coins }));
+  res.json({ ranking: list });
+});
+/* プレイヤー情報（要APIキー）: 外部システムがIDで残高・戦績を照会 */
+app.get('/api/players/:id', requireApiKey, (req, res) => {
+  const p = players.get(req.params.id);
+  if (!p) return res.status(404).json({ error: 'player not found' });
+  res.json({ id: p.id, name: p.name, coins: p.coins, wins: p.wins,
+    owned: p.owned, equipped: p.equipped, google: !!p.googleSub });
+});
+/* コイン付与（要APIキー）: 外部の課金・特典システムからの付与入口。
+ * ゲーム内ロジックからは呼ばれない（コインは勝利時のみ、のルールはゲーム内では不変） */
+app.post('/api/coins/grant', requireApiKey, (req, res) => {
+  const { playerId, amount, reason } = req.body || {};
+  const p = players.get(String(playerId || ''));
+  const n = Number(amount);
+  if (!p) return res.status(404).json({ error: 'player not found' });
+  if (!Number.isInteger(n) || n < 1 || n > 100000) return res.status(400).json({ error: 'amount must be integer 1..100000' });
+  p.coins += n;
+  savePlayersSoon();
+  sendTo(p.id, { t: 'coinsUpdate', coins: p.coins, gained: n, reason: String(reason || '').slice(0, 60) });
+  res.json({ ok: true, id: p.id, coins: p.coins });
+});
+/* 試合結果Webhook: WEBHOOK_URL を設定すると、試合確定のたびに外部へPOSTする（報酬集計など向け） */
+function postMatchWebhook(payload) {
+  if (!WEBHOOK_URL) return;
+  fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Webhook-Secret': WEBHOOK_SECRET },
+    body: JSON.stringify(payload)
+  }).catch(e => console.error('webhook failed:', e.message));
+}
 app.use(express.static(path.join(__dirname, 'public'), { index: 'index.html' }));
 
 const server = http.createServer(app);

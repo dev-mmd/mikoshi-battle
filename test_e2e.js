@@ -79,7 +79,8 @@ class Client {
     env: Object.assign({}, process.env, {
       PORT, TAP_MS: 800, CUE_LEAD: 500, CLOSE_GRACE: 250,
       RESULT_VIEW: 300, BATTLE_VIEW: 300, BOT_MATCH_AFTER: 900,
-      DATA_DIR: '/tmp/mikoshi-test-data-' + Date.now()
+      DATA_DIR: '/tmp/mikoshi-test-data-' + Date.now(),
+      API_KEY: 'test-api-key'
     })
   });
   srv.stderr.on('data', d => process.stderr.write('[srv] ' + d));
@@ -185,6 +186,32 @@ class Client {
   A.send({ t: 'tap', r: 99, at: A.serverNow() - 99999 });
   await sleep(300);
   ok(true, 'bogus tap ignored without crash');
+
+  /* ========== シナリオ6: 外部連携API（ランキング・照会・コイン付与） ========== */
+  console.log('--- scenario 6: external API ---');
+  const base = 'http://127.0.0.1:' + PORT;
+  const rank = await fetch(base + '/api/ranking').then(r => r.json());
+  ok(Array.isArray(rank.ranking) && rank.ranking.length >= 2, 'ranking returns players');
+  ok(rank.ranking[0].wins >= rank.ranking[rank.ranking.length - 1].wins, 'ranking sorted by wins');
+  const pid = A.profile.pid;
+  const noKey = await fetch(base + '/api/players/' + pid);
+  ok(noKey.status === 401, 'player API rejects missing key');
+  const prof = await fetch(base + '/api/players/' + pid, { headers: { 'X-Api-Key': 'test-api-key' } }).then(r => r.json());
+  ok(prof.id === pid && typeof prof.coins === 'number', 'player API returns profile');
+  const grant = await fetch(base + '/api/coins/grant', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Api-Key': 'test-api-key' },
+    body: JSON.stringify({ playerId: pid, amount: 7, reason: 'キャンペーン特典' })
+  }).then(r => r.json());
+  ok(grant.ok === true && grant.coins === prof.coins + 7, 'coin grant applied (+7)');
+  const push = await A.waitFor('coinsUpdate', 2000);
+  ok(push.coins === grant.coins && push.gained === 7, 'client notified of grant via WebSocket');
+  const badGrant = await fetch(base + '/api/coins/grant', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Api-Key': 'test-api-key' },
+    body: JSON.stringify({ playerId: pid, amount: -5 })
+  });
+  ok(badGrant.status === 400, 'negative grant rejected');
 
   console.log('E2E ALL PASS —', checks, 'checks');
   srv.kill();
