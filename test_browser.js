@@ -60,6 +60,10 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
   await sleep(400);
   ok(active() === 'screen-title', 'starts on title');
 
+  // 全神輿様式の3D組み立てスモークテスト（WebGL無しでもジオメトリ構築は実行できる）
+  const smoke = window.__mikoshiTest.buildAllVariants();
+  ok(smoke.length === 7, '3D smoke: all 7 variants assemble: ' + smoke.join(' '));
+
   click('titleStartBtn');
   await until(() => active() === 'screen-login', 3000, 'login');
 
@@ -69,7 +73,11 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
   ok(true, 'registered via UI');
 
   await until(() => active() === 'screen-teamselect', 6000, 'teamselect');
-  // 新しい連を作る（デフォルト選択）
+  // 新しい連を作る: 新様式「八角」を選択（サーバー側の様式受理も検証）
+  const chip = document.querySelector('.variant-chip[data-v="hakkaku"]');
+  ok(chip !== null, 'new variant chip rendered');
+  chip.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await sleep(100);
   const input = document.getElementById('customTeamInput');
   input.value = '花火連';
   input.dispatchEvent(new window.Event('input', { bubbles: true }));

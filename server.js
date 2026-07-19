@@ -18,7 +18,9 @@ const JUDGEMENTS = [
   { key: 'GREAT', min: 0.60 }, { key: 'NICE', min: 0.40 }, { key: 'MISS', min: 0.00 }
 ];
 const TEAM_NAME_POOL = ['雷神会','龍虎睦','疾風連','朱雀組','黄金衆','豪傑連','不知火睦','阿吽組','花火連','千年睦'];
-const VARIANTS = ['classic', 'kuro', 'shiro'];
+/* 神輿の様式（クライアント public/index.html の MIKOSHI_VARIANTS と必ず一致させる）
+ * classic=江戸型黄金 / kuro=漆黒 / shiro=白鳳 / rokkaku=京・六角 / hakkaku=八角 / shinmei=神明白木 / futon=布団太鼓 */
+const VARIANTS = ['classic', 'kuro', 'shiro', 'rokkaku', 'hakkaku', 'shinmei', 'futon'];
 const CATALOG = [
   { key:'happiAo', rarity:'N' }, { key:'happiMidori', rarity:'N' }, { key:'happiMurasaki', rarity:'N' },
   { key:'happiShu', rarity:'N' }, { key:'shiroHachimaki', rarity:'N' }, { key:'festivalFan', rarity:'N' },
@@ -91,6 +93,22 @@ function botTapOffsets(count, skill) {
   return out;
 }
 
+/* ================= Googleログイン =================
+ * GOOGLE_CLIENT_ID を環境変数に設定すると有効になる（未設定ならニックネーム参加のみ）。
+ * IDトークンの検証はサーバー側で Google の tokeninfo エンドポイントに問い合わせて行う。 */
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+async function verifyGoogleToken(idToken) {
+  if (!GOOGLE_CLIENT_ID || typeof idToken !== 'string' || idToken.length > 4000) return null;
+  try {
+    const res = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
+    if (!res.ok) return null;
+    const info = await res.json();
+    if (info.aud !== GOOGLE_CLIENT_ID) return null;
+    if (!info.sub) return null;
+    return { sub: String(info.sub), name: info.name || info.given_name || '' };
+  } catch (e) { return null; }
+}
+
 /* ================= 永続化 ================= */
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'players.json');
@@ -118,7 +136,7 @@ function sanitizeName(s) {
 }
 function profileMsg(p) {
   return { t: 'welcome', pid: p.id, token: p.token, name: p.name,
-    coins: p.coins, owned: p.owned, equipped: p.equipped, wins: p.wins };
+    coins: p.coins, owned: p.owned, equipped: p.equipped, wins: p.wins, google: !!p.googleSub };
 }
 
 /* ================= ルーム / マッチ ================= */
@@ -384,6 +402,7 @@ function finishMatch(m) {
 const app = express();
 app.use((req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); next(); });
 app.get('/healthz', (req, res) => res.json({ ok: true, players: players.size, rooms: rooms.size, matches: matches.size }));
+app.get('/auth-config', (req, res) => res.json({ googleClientId: GOOGLE_CLIENT_ID || null }));
 app.use(express.static(path.join(__dirname, 'public'), { index: 'index.html' }));
 
 const server = http.createServer(app);
@@ -414,11 +433,44 @@ setInterval(() => {
   });
 }, 25000);
 
+function finishRegister(ws, p) {
+  const old = sockets.get(p.id);
+  if (old && old !== ws) { try { old.close(); } catch (e) {} }
+  ws.pid = p.id; sockets.set(p.id, ws);
+  savePlayersSoon();
+  ws.send(JSON.stringify(profileMsg(p)));
+  const room = roomOf(p.id);
+  if (room) ws.send(JSON.stringify(roomSnapshot(room)));
+}
+
 function handle(ws, msg) {
   switch (msg.t) {
     case 'ping': return void ws.send(JSON.stringify({ t: 'pong', c: msg.c, s: Date.now() }));
 
     case 'register': {
+      // Googleログイン（gtoken付き）は検証が非同期になるため分岐
+      if (msg.gtoken) {
+        verifyGoogleToken(msg.gtoken).then(g => {
+          if (ws.readyState !== 1) return;
+          if (!g) return void ws.send(JSON.stringify({ t: 'err', code: 'google', msg: 'Googleログインを確認できませんでした' }));
+          let p = null;
+          for (const q of players.values()) if (q.googleSub === g.sub) { p = q; break; }
+          if (!p && msg.token) {
+            // 既存のニックネームアカウントにGoogleを紐付け（戦績・コインを引き継ぐ）
+            for (const q of players.values()) if (q.token === msg.token && !q.googleSub) { p = q; p.googleSub = g.sub; break; }
+          }
+          if (!p) {
+            const name = sanitizeName(msg.name) || sanitizeName(g.name) || 'プレイヤー';
+            p = { id: 'p' + crypto.randomBytes(6).toString('hex'), token: crypto.randomBytes(16).toString('hex'),
+              name, coins: 0, owned: [], equipped: [], wins: 0, googleSub: g.sub };
+            players.set(p.id, p);
+          } else if (msg.name && sanitizeName(msg.name)) {
+            p.name = sanitizeName(msg.name);
+          }
+          finishRegister(ws, p);
+        });
+        return;
+      }
       let p = null;
       if (msg.token) { for (const q of players.values()) if (q.token === msg.token) { p = q; break; } }
       if (!p) {
@@ -430,13 +482,7 @@ function handle(ws, msg) {
       } else if (msg.name && sanitizeName(msg.name)) {
         p.name = sanitizeName(msg.name);
       }
-      const old = sockets.get(p.id);
-      if (old && old !== ws) { try { old.close(); } catch (e) {} }
-      ws.pid = p.id; sockets.set(p.id, ws);
-      savePlayersSoon();
-      ws.send(JSON.stringify(profileMsg(p)));
-      const room = roomOf(p.id);
-      if (room) ws.send(JSON.stringify(roomSnapshot(room)));
+      finishRegister(ws, p);
       return;
     }
   }
