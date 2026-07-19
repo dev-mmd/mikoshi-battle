@@ -1,0 +1,2946 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>せーの！神輿バトル</title>
+<style>
+:root{
+  --sky-1:#453a83;
+  --sky-2:#332c63;
+  --sky-3:#251e4a;
+  --shu:#d8492c; --shu-deep:#a82c16; --shu-hi:#ff6a42;
+  --kin-1:#f9e6a0; --kin-2:#dcae48; --kin-3:#94701f;
+  --kinari:#f7f0de;
+  --fuji:#c3bde6;
+  --line:rgba(224,182,84,.34);
+  --line-soft:rgba(224,182,84,.16);
+  --panel:rgba(38,30,74,.72);
+  --panel-hi:rgba(52,42,96,.72);
+  --scrim:rgba(20,14,42,.66);
+  --radius:16px;
+  --serif:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+  --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+}
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; height:100%; color:var(--kinari); font-family:var(--sans); -webkit-text-size-adjust:100%; overscroll-behavior:none; }
+html,body{
+  background:
+    radial-gradient(ellipse 130% 46% at 50% 108%, rgba(232,138,74,.34), transparent 66%),
+    radial-gradient(ellipse 700px 460px at 82% -6%, rgba(126,104,196,.35), transparent 62%),
+    radial-gradient(ellipse 560px 400px at 8% 30%, rgba(216,73,44,.12), transparent 60%),
+    linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 46%, var(--sky-3) 100%);
+  background-attachment:fixed;
+}
+body{ touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+button,input{ font-family:inherit; }
+button{ cursor:pointer; -webkit-appearance:none; appearance:none; }
+button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outline-offset:2px; }
+
+.vignette{ position:fixed; inset:0; pointer-events:none; z-index:60;
+  background:radial-gradient(ellipse 125% 102% at 50% 42%, transparent 62%, rgba(10,6,24,.34) 100%); }
+
+#threeCanvas{ position:fixed; left:0; top:0; width:100%; height:100%; z-index:1; display:none; touch-action:none; }
+#threeCanvas.show{ display:block; }
+
+#app{ position:relative; z-index:2; min-height:100vh; min-height:100dvh; max-width:480px; margin:0 auto; overflow-x:hidden; background:transparent; }
+.screen{ display:none; min-height:100vh; min-height:100dvh; flex-direction:column; padding:max(22px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom)); position:relative; }
+.screen.active{ display:flex; }
+.screen.active .rv{ opacity:0; transform:translateY(16px); animation:rise .65s cubic-bezier(.2,.7,.2,1) forwards; animation-delay:var(--d,0s); }
+@keyframes rise{ to{ opacity:1; transform:translateY(0); } }
+
+/* ---------------- typography ---------------- */
+.crest-eyebrow{ display:flex; align-items:center; justify-content:center; gap:12px; margin:0 0 12px; }
+.crest-eyebrow::before,.crest-eyebrow::after{ content:''; height:1px; width:38px; background:linear-gradient(90deg,transparent,var(--kin-2)); }
+.crest-eyebrow::after{ background:linear-gradient(90deg,var(--kin-2),transparent); }
+.crest-eyebrow span{ font-family:var(--serif); font-size:12px; letter-spacing:.36em; color:var(--kin-1); font-weight:600; text-indent:.36em; text-shadow:0 1px 8px rgba(220,174,72,.3); }
+.display{ font-family:var(--serif); font-weight:800; letter-spacing:.06em; line-height:1.22; margin:0; text-align:center; }
+.gold-text{ background:linear-gradient(168deg,#fff3c4 8%,var(--kin-1) 26%,var(--kin-2) 52%,#b3892a 66%,#f6dc8a 90%); -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 2px 6px rgba(30,16,2,.45)); }
+.sub-copy{ color:var(--fuji); font-size:13px; line-height:1.8; }
+
+/* ---------------- buttons ---------------- */
+.btn-gold{ position:relative; overflow:hidden; border:none; border-radius:14px; font-weight:800; font-size:16px; letter-spacing:.04em; padding:16px 22px; color:#3a2506;
+  background:linear-gradient(172deg,#ffefb0 0%,#f3d478 26%,var(--kin-2) 52%,#b98d2e 60%,#f0d178 100%);
+  box-shadow:0 1px 0 rgba(255,248,214,.85) inset, 0 -3px 8px rgba(96,64,10,.45) inset,
+    0 12px 30px rgba(10,6,24,.5), 0 4px 18px rgba(224,164,54,.28);
+  transition:transform .12s, box-shadow .12s; }
+.btn-gold:active{ transform:translateY(2px) scale(.99); box-shadow:0 1px 0 rgba(255,248,214,.85) inset, 0 -2px 6px rgba(96,64,10,.45) inset, 0 6px 16px rgba(10,6,24,.5); }
+.btn-gold::after{ content:''; position:absolute; top:-40%; bottom:-40%; width:34%; left:-45%; transform:rotate(18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,253,240,.8),transparent); animation:sheen 3.4s ease-in-out infinite; }
+@keyframes sheen{ 0%,55%{ left:-45%; } 85%,100%{ left:130%; } }
+.btn-gold:disabled{ filter:saturate(.4) brightness(.8); }
+.btn-lacquer{ background:linear-gradient(172deg,var(--panel-hi),var(--panel)); color:var(--kinari); border:1px solid var(--line); border-radius:14px; font-weight:700; font-size:15px; padding:15px 20px; box-shadow:0 10px 24px rgba(10,6,24,.42), 0 1px 0 rgba(255,255,255,.08) inset; backdrop-filter:blur(6px); }
+.btn-lacquer:active{ transform:translateY(1px); }
+.btn-large{ width:100%; }
+.btn-text{ background:none; border:none; color:var(--fuji); text-decoration:underline; text-underline-offset:3px; font-size:13px; padding:8px; }
+.btn-primary{ border:none; border-radius:10px; font-weight:800; color:#3a2506;
+  background:linear-gradient(172deg,#f6dd8e,var(--kin-2)); box-shadow:0 4px 12px rgba(10,6,24,.4); }
+.hidden{ display:none !important; }
+.center-col{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:12px; }
+
+/* ---------------- panels ---------------- */
+.panel{ background:linear-gradient(176deg, var(--panel-hi), var(--panel));
+  border:1px solid var(--line); outline:1px solid var(--line-soft); outline-offset:3px;
+  border-radius:var(--radius); padding:18px; box-shadow:0 18px 40px rgba(10,6,24,.45), 0 1px 0 rgba(255,255,255,.07) inset;
+  backdrop-filter:blur(8px); }
+.seigaiha{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='30'%3E%3Cg fill='none' stroke='%23dcae48' stroke-opacity='.12'%3E%3Ccircle cx='30' cy='30' r='27'/%3E%3Ccircle cx='30' cy='30' r='19'/%3E%3Ccircle cx='30' cy='30' r='11'/%3E%3Ccircle cx='0' cy='30' r='27'/%3E%3Ccircle cx='60' cy='30' r='27'/%3E%3C/g%3E%3C/svg%3E"); background-size:60px 30px; }
+
+/* ---------------- curtain wipe ---------------- */
+#wipe{ position:fixed; inset:0; z-index:80; pointer-events:none; }
+.wipe-panel{ position:absolute; top:0; bottom:0; width:51%;
+  background:linear-gradient(180deg,#b7301c 0%,#8c1d10 58%,#69120a 100%);
+  box-shadow:0 0 60px rgba(0,0,0,.55) inset; }
+.wipe-panel::after{ content:''; position:absolute; inset:0; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='30'%3E%3Cg fill='none' stroke='%23000000' stroke-opacity='.14'%3E%3Ccircle cx='30' cy='30' r='27'/%3E%3Ccircle cx='30' cy='30' r='19'/%3E%3Ccircle cx='0' cy='30' r='27'/%3E%3Ccircle cx='60' cy='30' r='27'/%3E%3C/g%3E%3C/svg%3E"); background-size:60px 30px; }
+.wipe-l{ left:0; transform:translateX(-102%); border-right:3px solid var(--kin-2); }
+.wipe-r{ right:0; transform:translateX(102%); border-left:3px solid var(--kin-2); }
+.wipe-crest{ position:absolute; left:50%; top:50%; width:92px; height:92px; transform:translate(-50%,-50%) scale(.6); opacity:0; filter:drop-shadow(0 0 22px rgba(249,230,160,.5)); }
+#wipe.closing .wipe-l,#wipe.hold .wipe-l{ transform:translateX(0); }
+#wipe.closing .wipe-r,#wipe.hold .wipe-r{ transform:translateX(0); }
+#wipe.closing .wipe-panel{ transition:transform .42s cubic-bezier(.7,0,.3,1); }
+#wipe.closing .wipe-crest,#wipe.hold .wipe-crest{ opacity:1; transform:translate(-50%,-50%) scale(1); transition:opacity .3s .18s, transform .4s .18s cubic-bezier(.2,.9,.3,1.4); }
+#wipe.opening .wipe-panel{ transition:transform .5s cubic-bezier(.7,0,.3,1) .05s; }
+#wipe.opening .wipe-l{ transform:translateX(-102%); }
+#wipe.opening .wipe-r{ transform:translateX(102%); }
+#wipe.opening .wipe-crest{ opacity:0; transition:opacity .18s; }
+
+/* ---------------- title ---------------- */
+#screen-title{ overflow:hidden; justify-content:flex-start; }
+#screen-title .title-scrim{ position:absolute; inset:0; pointer-events:none; z-index:1;
+  background:linear-gradient(180deg, rgba(28,20,56,.6) 0%, rgba(28,20,56,.26) 26%, transparent 46%, transparent 66%, rgba(18,12,38,.7) 100%); }
+#screen-title .title-block{ padding-top:8vh; display:flex; flex-direction:column; align-items:center; position:relative; z-index:2; }
+.title-crest{ width:70px; height:70px; margin:0 auto 16px; filter:drop-shadow(0 0 22px rgba(224,182,84,.45)); }
+.title-main{ font-size:clamp(42px,13vw,60px); }
+.title-sub{ font-family:var(--serif); text-align:center; color:var(--kinari); font-size:13px; letter-spacing:.32em; text-indent:.32em; margin:16px 0 0; opacity:.94; text-shadow:0 1px 10px rgba(12,6,30,.75); }
+.title-stamp{ position:absolute; right:-4px; top:-8px; width:42px; height:42px; background:var(--shu); border-radius:8px;
+  display:flex; align-items:center; justify-content:center; font-family:var(--serif); font-weight:800; color:#fff2e0; font-size:21px;
+  transform:rotate(8deg); box-shadow:0 8px 20px rgba(120,26,10,.5); }
+.title-bottom{ margin-top:auto; position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:10px; padding-bottom:6px; }
+.title-rule{ display:flex; align-items:center; gap:12px; justify-content:center; margin:6px 0 0; }
+.title-rule::before,.title-rule::after{ content:''; height:1px; width:58px; background:linear-gradient(90deg,transparent,var(--kin-2),transparent); }
+.title-rule span{ color:var(--kin-1); font-size:11px; letter-spacing:.42em; text-indent:.42em; opacity:.9; }
+.ember{ position:absolute; bottom:-12px; width:5px; height:5px; border-radius:50%;
+  background:radial-gradient(circle,#ffd77a,#ff6a3d 70%); filter:blur(.4px);
+  animation:ember-rise linear infinite; opacity:0; z-index:2; }
+@keyframes ember-rise{ 0%{ transform:translateY(0) translateX(0); opacity:0; } 8%{ opacity:.9; } 100%{ transform:translateY(-105vh) translateX(var(--sway,20px)); opacity:0; } }
+
+/* ---------------- qr ---------------- */
+.qr-wrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:22px; }
+.qr-box{ position:relative; width:216px; height:216px; background:#f8f3e6; border-radius:14px; padding:14px;
+  box-shadow:0 0 0 1px var(--kin-3), 0 0 0 6px #2a2254, 0 0 0 7px var(--kin-3), 0 26px 56px rgba(10,6,24,.55); }
+.qr-grid{ width:100%; height:100%; display:grid; grid-template-columns:repeat(17,1fr); grid-template-rows:repeat(17,1fr); gap:1px; }
+.qr-cell.on{ background:#1e1838; }
+.qr-scanline{ position:absolute; left:8px; right:8px; height:3px; background:linear-gradient(90deg,transparent,var(--shu-hi),transparent); box-shadow:0 0 16px 2px var(--shu-hi); animation:qr-scan 1.4s ease-in-out infinite; }
+@keyframes qr-scan{ 0%{top:14px;} 50%{top:calc(100% - 20px);} 100%{top:14px;} }
+.qr-caption{ color:var(--fuji); font-size:13px; text-align:center; letter-spacing:.08em; }
+.store-reveal{ opacity:0; transform:scale(.86); transition:opacity .5s, transform .5s cubic-bezier(.2,.9,.3,1.3); text-align:center; }
+.store-reveal.show{ opacity:1; transform:scale(1); }
+.store-reveal .presents{ font-size:11px; color:var(--fuji); letter-spacing:.3em; margin-bottom:5px; }
+.store-reveal .store-name{ font-family:var(--serif); font-size:25px; font-weight:800; letter-spacing:.1em; }
+
+/* ---------------- team select ---------------- */
+.team-grid{ display:flex; flex-direction:column; gap:12px; flex:1; overflow-y:auto; padding:4px 2px 12px; }
+.team-card{ display:flex; align-items:center; gap:14px; text-align:left; color:var(--kinari);
+  background:linear-gradient(176deg, var(--panel-hi), var(--panel));
+  border:1px solid var(--line-soft); border-radius:var(--radius); padding:14px 16px; transition:border-color .2s, box-shadow .2s; backdrop-filter:blur(6px); }
+.team-card.selected{ border-color:var(--kin-2); box-shadow:0 0 0 1px var(--kin-2), 0 0 28px rgba(224,182,84,.26); }
+.team-mini-svg{ width:58px; height:58px; flex-shrink:0; filter:drop-shadow(0 4px 8px rgba(10,6,24,.55)); }
+.team-card-info{ flex:1; min-width:0; }
+.team-card-name{ font-family:var(--serif); font-weight:800; font-size:17px; letter-spacing:.06em; }
+.team-card-meta{ font-size:12px; color:var(--fuji); margin-top:4px; }
+.team-card-badge{ font-size:11px; padding:5px 10px; border-radius:20px; background:rgba(224,182,84,.14); border:1px solid var(--line); color:var(--kin-1); font-weight:700; white-space:nowrap; }
+.custom-team-card input{ background:rgba(18,12,38,.7); border:1px solid var(--line); border-radius:10px; padding:10px 12px; color:var(--kinari); font-size:14px; width:100%; margin-top:8px; }
+.custom-team-card input::placeholder{ color:#8a86ae; }
+
+/* ---------------- flash / lobby ---------------- */
+.impact-flash{ position:fixed; inset:0; background:radial-gradient(circle, rgba(249,230,160,.9), rgba(216,73,44,.4) 60%, transparent 80%); opacity:0; pointer-events:none; z-index:70; }
+.impact-flash.play{ animation:flash-pulse .35s ease-out; }
+@keyframes flash-pulse{ 0%{opacity:0;} 15%{opacity:1;} 100%{opacity:0;} }
+.lobby-team-name{ font-size:33px; }
+.lobby-stats{ display:flex; gap:38px; margin:12px 0 18px; }
+.stat{ display:flex; flex-direction:column; align-items:center; }
+.stat-num{ font-family:var(--serif); font-size:31px; font-weight:800; font-variant-numeric:tabular-nums; }
+.stat-label{ font-size:11px; color:var(--fuji); letter-spacing:.16em; margin-top:3px; }
+.member-row{ display:flex; gap:7px; flex-wrap:wrap; justify-content:center; max-width:320px; margin:4px 0 16px; }
+.member-dot{ width:16px; height:16px; border-radius:50%; background:linear-gradient(160deg,#4a3e8a,#2c2458); border:1.5px solid var(--line); opacity:0; transform:scale(.4); animation:member-in .32s cubic-bezier(.2,.9,.3,1.4) forwards; }
+@keyframes member-in{ to{ opacity:1; transform:scale(1); } }
+.bonus-toast{ font-size:13px; color:var(--kin-1); font-weight:700; opacity:0; transition:opacity .4s; letter-spacing:.04em; }
+.bonus-toast.show{ opacity:1; }
+.join-feed{ min-height:66px; font-size:12px; color:var(--fuji); text-align:center; line-height:1.95; }
+.join-feed div{ animation:rise .4s ease both; }
+
+/* ---------------- ad ---------------- */
+.ad-canvas-wrap{ position:relative; width:100%; max-width:340px; margin:14px auto; border-radius:14px; overflow:hidden;
+  box-shadow:0 0 0 1px var(--line), 0 18px 40px rgba(10,6,24,.5); }
+#adCanvas{ width:100%; height:auto; display:block; background:#111; }
+.ad-progress-track{ height:4px; background:rgba(247,240,222,.16); border-radius:3px; overflow:hidden; margin:16px auto 8px; max-width:340px; width:100%; }
+.ad-progress-fill{ height:100%; width:0%; background:linear-gradient(90deg,var(--shu),var(--kin-2)); }
+.ad-note{ text-align:center; color:var(--fuji); font-size:12px; margin-bottom:16px; }
+.ad-reward-flash{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(18,12,38,.82); opacity:0; pointer-events:none; transition:opacity .25s; font-family:var(--serif); font-size:21px; font-weight:800; color:var(--kin-1); }
+.ad-reward-flash.show{ opacity:1; }
+
+/* ---------------- match ---------------- */
+#screen-match{ background:transparent; }
+.match-header{ display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--kinari); font-weight:700; padding:9px 14px; position:relative; z-index:2; letter-spacing:.04em;
+  background:var(--scrim); border:1px solid var(--line-soft); border-radius:12px; backdrop-filter:blur(6px); }
+.match-header span{ font-variant-numeric:tabular-nums; }
+#powerTotal{ color:var(--kin-1); }
+.mikoshi-live-area{ position:relative; height:33vh; min-height:190px; pointer-events:none; z-index:2; display:flex; align-items:flex-end; justify-content:center; }
+.mikoshi-live-label{ background:var(--scrim); border:1px solid var(--line); border-radius:22px; padding:7px 18px; font-size:12px; font-weight:800; color:var(--kin-1); backdrop-filter:blur(6px); margin-bottom:6px; transition:transform .15s; letter-spacing:.06em; box-shadow:0 8px 22px rgba(10,6,24,.35); }
+.mikoshi-live-label.pop{ transform:scale(1.14); }
+.tap-zone{ flex:1; display:flex; flex-direction:column; touch-action:none; position:relative; z-index:2; }
+.avatar-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(17px,1fr)); gap:4px; padding:12px 2px 4px; align-content:start; }
+.avatar-dot{ aspect-ratio:1; border-radius:50%; background:rgba(247,240,222,.08); border:2px solid rgba(247,240,222,.18); transition:all .18s; }
+.avatar-dot.is-player{ border-color:var(--kin-1); box-shadow:0 0 0 2px rgba(249,230,160,.25) inset; }
+.avatar-dot.tapped{ background:var(--kin-1); border-color:var(--kin-2); transform:scale(1.18); }
+.avatar-dot.synced{ box-shadow:0 0 12px 3px var(--shu-hi); border-color:#fff; }
+.avatar-dot.missed{ opacity:.28; }
+.tap-stage{ position:relative; flex:1; min-height:158px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.timer-ring{ position:absolute; width:172px; height:172px; filter:drop-shadow(0 0 12px rgba(224,182,84,.3)); }
+.ring-bg{ fill:none; stroke:rgba(247,240,222,.14); stroke-width:7; }
+.ring-fg{ fill:none; stroke:url(#ringGold); stroke-width:7; stroke-linecap:round; transform:rotate(-90deg); transform-origin:50% 50%; }
+.tap-target{ position:absolute; width:128px; height:128px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,106,66,.55), rgba(216,73,44,.16) 68%, transparent); opacity:0; }
+.tap-target.pulsing{ opacity:1; animation:target-pulse .78s ease-in-out infinite; }
+@keyframes target-pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.15); } }
+.countdown,.cue-text{ position:relative; font-family:var(--serif); font-weight:800; text-align:center; opacity:0; transform:scale(.6); transition:opacity .18s,transform .18s; }
+.countdown.show,.cue-text.show{ opacity:1; transform:scale(1); }
+.countdown{ font-size:58px; color:var(--kin-1); text-shadow:0 2px 18px rgba(12,6,30,.7); }
+.cue-text{ font-size:clamp(42px,14vw,72px); color:var(--shu-hi); text-shadow:0 0 34px rgba(255,106,66,.7), 0 3px 3px rgba(20,6,2,.7); letter-spacing:.02em; }
+.cue-text.show{ animation:cue-bounce .5s cubic-bezier(.2,.9,.3,1.4); }
+@keyframes cue-bounce{ 0%{transform:scale(.4);} 55%{transform:scale(1.16);} 100%{transform:scale(1);} }
+.player-tap-info{ position:relative; margin-top:116px; font-size:13px; font-weight:800; color:var(--kin-1); opacity:0; transition:opacity .2s; min-height:18px; font-variant-numeric:tabular-nums; text-shadow:0 1px 8px rgba(12,6,30,.8); }
+.player-tap-info.show{ opacity:1; }
+.tap-hint-text{ text-align:center; color:var(--kinari); font-size:12px; padding:7px 0; letter-spacing:.05em; opacity:.85; text-shadow:0 1px 8px rgba(12,6,30,.8); }
+.tap-ripple{ position:fixed; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%; border:3px solid var(--kin-1); pointer-events:none; z-index:40; animation:ripple-out .5s ease-out forwards; }
+@keyframes ripple-out{ from{ transform:scale(1); opacity:1; } to{ transform:scale(6); opacity:0; } }
+
+.result-overlay{ position:fixed; inset:0; background:rgba(14,9,30,.76); display:flex; align-items:center; justify-content:center; padding:24px; z-index:20; opacity:0; transition:opacity .2s; backdrop-filter:blur(3px); }
+.result-overlay.show{ opacity:1; }
+.result-card{ text-align:center; width:100%; max-width:344px; padding:30px 24px; }
+.judgement-badge{ position:relative; margin-bottom:12px; }
+.judge-emoji{ display:block; font-size:44px; }
+.judge-label{ display:block; font-family:var(--serif); font-size:28px; font-weight:800; color:var(--jcolor,var(--kin-2)); margin-top:4px; letter-spacing:.04em; }
+.sync-detail{ font-size:14px; margin:8px 0; color:var(--kinari); line-height:1.7; }
+.power-gained{ font-family:var(--serif); color:var(--kin-1); font-weight:800; font-size:20px; margin:2px 0; }
+.medal-gained{ color:var(--fuji); font-size:12px; margin:0 0 18px; min-height:16px; }
+.confetti-piece{ position:absolute; width:8px; height:8px; border-radius:2px; left:50%; top:10px; pointer-events:none; animation:confetti-burst .95s ease-out forwards; }
+@keyframes confetti-burst{ to{ transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) rotate(360deg); opacity:0; } }
+
+/* ---------------- battle ---------------- */
+.battle-overlay{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; justify-content:space-between; pointer-events:none; }
+.battle-vs-banner{ text-align:center; font-family:var(--serif); font-size:16px; font-weight:800; letter-spacing:.06em;
+  background:var(--scrim); border:1px solid var(--line-soft); border-radius:14px; padding:10px; backdrop-filter:blur(6px); box-shadow:0 10px 26px rgba(10,6,24,.35); }
+.battle-vs-banner b{ color:var(--kin-1); }
+.battle-vs-banner .vs{ color:var(--shu-hi); font-size:13px; margin:0 8px; }
+.power-race{ display:flex; justify-content:space-between; gap:10px; padding-top:9px; }
+.power-race-team{ flex:1; background:var(--scrim); border:1px solid var(--line-soft); border-radius:12px; padding:9px 12px; backdrop-filter:blur(6px); }
+.power-race-team.enemy{ text-align:right; }
+.power-race-name{ font-size:12px; font-weight:700; color:var(--kinari); }
+.power-race-bar-track{ height:6px; background:rgba(247,240,222,.14); border-radius:4px; overflow:hidden; margin-top:6px; }
+.power-race-bar-fill{ height:100%; background:linear-gradient(90deg,var(--shu),var(--kin-2)); width:0%; }
+.power-race-team.enemy .power-race-bar-fill{ margin-left:auto; background:linear-gradient(90deg,#2c56c9,#5e8aff); }
+.battle-center-msg{ text-align:center; font-family:var(--serif); font-size:38px; font-weight:800; color:var(--kin-1); letter-spacing:.08em;
+  text-shadow:0 0 30px rgba(224,182,84,.55), 0 3px 3px rgba(6,2,14,.85); opacity:0; transition:opacity .22s, transform .22s; transform:scale(.7); }
+.battle-center-msg.show{ opacity:1; transform:scale(1); }
+.battle-continue-wrap{ padding-bottom:10px; pointer-events:auto; }
+.battle-continue-wrap .btn-gold{ opacity:0; transition:opacity .3s; width:100%; }
+.battle-continue-wrap .btn-gold.show{ opacity:1; }
+
+/* ---------------- prediction ---------------- */
+.prediction-choice-row{ display:flex; gap:10px; width:100%; max-width:340px; }
+.prediction-choice-row button{ flex:1; }
+.prediction-suspense{ font-size:15px; color:var(--fuji); }
+.prediction-result{ font-family:var(--serif); font-size:18px; font-weight:800; color:var(--kin-1); opacity:0; transition:opacity .3s; min-height:26px; }
+.prediction-result.show{ opacity:1; }
+
+/* ---------------- result / mypage ---------------- */
+.result-stat-grid{ display:flex; gap:14px; margin:16px 0; width:100%; max-width:334px; }
+.result-stat{ flex:1; text-align:center; padding:17px 10px; }
+.result-stat-num{ font-family:var(--serif); font-size:27px; font-weight:800; font-variant-numeric:tabular-nums; }
+.result-stat-label{ font-size:11px; color:var(--fuji); margin-top:5px; letter-spacing:.14em; }
+.result-headline{ font-size:26px; margin:8px 0; }
+.stage-label-overlay{ position:relative; z-index:2; text-align:center; color:var(--kin-1); font-family:var(--serif); font-weight:800; font-size:15px; margin:8px 0; pointer-events:none; letter-spacing:.06em; text-shadow:0 1px 10px rgba(12,6,30,.8); }
+
+/* ---------------- gacha ---------------- */
+.gacha-medal-badge{ font-size:14px; color:var(--kin-1); font-weight:800; margin-bottom:10px; font-variant-numeric:tabular-nums; }
+.gacha-stage{ position:relative; width:172px; height:172px; margin:8px auto 20px; display:flex; align-items:center; justify-content:center; }
+.gacha-glow{ position:absolute; width:236px; height:236px; border-radius:50%; opacity:0; filter:blur(7px); transition:opacity .3s; }
+.gacha-glow.show{ opacity:.85; }
+.gacha-glow.rarity-n{ background:radial-gradient(circle,#a5aede,transparent 70%); }
+.gacha-glow.rarity-r{ background:radial-gradient(circle,#5ec8ff,transparent 70%); }
+.gacha-glow.rarity-sr{ background:radial-gradient(circle,#c88bff,transparent 70%); }
+.gacha-glow.rarity-ssr{ background:conic-gradient(from 0deg,#ff6b4a,#f9e6a0,#5ec8ff,#c88bff,#ff6b4a); animation:gacha-spin 3s linear infinite; }
+@keyframes gacha-spin{ to{ transform:rotate(360deg); } }
+.gacha-capsule{ width:114px; height:114px; border-radius:50%; position:relative; z-index:1;
+  background:linear-gradient(175deg,#f6eed6 48%,#b7301c 52%); box-shadow:0 0 0 2px rgba(0,0,0,.25) inset, 0 14px 30px rgba(10,6,24,.5); }
+.gacha-capsule::before{ content:''; position:absolute; left:50%; top:50%; width:26px; height:26px; transform:translate(-50%,-50%); border-radius:50%; background:var(--kin-2); box-shadow:0 0 0 3px rgba(0,0,0,.2); }
+.gacha-capsule.shaking{ animation:capsule-shake .12s infinite; }
+@keyframes capsule-shake{ 0%,100%{transform:translateX(0) rotate(0);} 25%{transform:translateX(-4px) rotate(-4deg);} 75%{transform:translateX(4px) rotate(4deg);} }
+.gacha-capsule.cracked{ background:transparent; box-shadow:none; }
+.gacha-capsule.cracked::before{ display:none; }
+.gacha-result-card{ text-align:center; }
+.gacha-avatar-icon{ font-size:48px; display:block; }
+.gacha-avatar-name{ font-family:var(--serif); font-size:20px; font-weight:800; margin-top:6px; letter-spacing:.06em; }
+.gacha-rarity-badge{ display:inline-block; margin-top:8px; font-size:11px; font-weight:800; padding:4px 12px; border-radius:20px; letter-spacing:.1em; }
+.gacha-rarity-badge.rarity-n{ background:#343a62; color:#cdd4f0; }
+.gacha-rarity-badge.rarity-r{ background:#1c4a6e; color:#a8dcff; }
+.gacha-rarity-badge.rarity-sr{ background:#46296e; color:#e2c2ff; }
+.gacha-rarity-badge.rarity-ssr{ background:linear-gradient(90deg,#ff6b4a,#f9e6a0); color:#2a1505; }
+.gacha-rates{ font-size:11px; color:var(--fuji); text-align:center; margin-top:12px; line-height:1.7; letter-spacing:.06em; }
+
+/* ---------------- equip ---------------- */
+.equip-list{ display:flex; flex-direction:column; gap:8px; position:relative; z-index:2; pointer-events:auto; max-height:37vh; overflow-y:auto; }
+.equip-row{ display:flex; align-items:center; gap:11px; background:var(--scrim); backdrop-filter:blur(6px); border:1px solid var(--line-soft); border-radius:12px; padding:10px 13px; }
+.equip-row.is-new{ border-color:var(--kin-2); box-shadow:0 0 18px rgba(224,182,84,.22); }
+.equip-icon{ font-size:24px; }
+.equip-name{ flex:1; font-weight:700; font-size:14px; }
+.equip-name .rar{ color:var(--fuji); font-size:11px; }
+.equip-new-badge{ font-size:10px; background:var(--shu); color:#fff; padding:2px 7px; border-radius:10px; font-weight:800; }
+.equip-btn{ font-size:12px; padding:9px 13px; border-radius:8px; }
+.equip-btn.is-equipped{ background:var(--panel); color:var(--fuji); box-shadow:none; border:1px solid var(--line); }
+
+.toast{ position:fixed; left:50%; bottom:36px; transform:translateX(-50%); background:var(--shu); color:#fff; font-weight:800; padding:12px 22px; border-radius:24px; z-index:70; box-shadow:0 12px 28px rgba(10,6,24,.55); opacity:0; transition:opacity .2s; white-space:nowrap; font-size:14px; }
+.toast.show{ opacity:1; }
+
+.conn-pill{ position:fixed; top:calc(8px + env(safe-area-inset-top)); right:10px; z-index:65; font-size:10px; letter-spacing:.08em; padding:5px 11px; border-radius:20px; background:rgba(20,14,42,.75); border:1px solid rgba(216,73,44,.55); color:#f0b9a8; backdrop-filter:blur(6px); }
+.conn-pill.ok{ border-color:var(--line); color:var(--kin-1); }
+.variant-row{ display:flex; gap:8px; margin-top:8px; }
+.variant-chip{ flex:1; font-size:12px; font-weight:700; padding:8px 4px; border-radius:8px; border:1px solid var(--line-soft); background:rgba(18,12,38,.7); color:var(--fuji); }
+.variant-chip.sel{ border-color:var(--kin-2); color:var(--kin-1); box-shadow:0 0 12px rgba(224,182,84,.25); }
+.nick-input{ background:rgba(18,12,38,.7); border:1px solid var(--line); border-radius:12px; padding:14px 16px; color:var(--kinari); font-size:16px; width:100%; max-width:290px; text-align:center; }
+.nick-input::placeholder{ color:#8a86ae; }
+.google-btn{ display:flex; align-items:center; gap:10px; background:#fff; color:#2a2a35; border:none; border-radius:26px; padding:13px 28px; font-weight:700; font-size:15px; box-shadow:0 10px 26px rgba(10,6,24,.45); }
+.google-btn:active{ transform:translateY(1px); }
+.gmark{ display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:conic-gradient(#ea4335 0 25%,#4285f4 25% 50%,#34a853 50% 75%,#fbbc05 75% 100%); color:#fff; font-weight:900; font-size:13px; }
+.demo-note{ font-size:11px; color:var(--fuji); line-height:1.8; margin-top:14px; }
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="threeCanvas"></canvas>
+<div class="vignette"></div>
+<div id="connPill" class="conn-pill">接続待機</div>
+
+<svg width="0" height="0" style="position:absolute;" aria-hidden="true">
+  <defs>
+    <linearGradient id="ringGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f9e6a0"/><stop offset="55%" stop-color="#dcae48"/><stop offset="100%" stop-color="#ff6a42"/>
+    </linearGradient>
+    <g id="kamon">
+      <circle cx="44" cy="44" r="41" fill="none" stroke="#dcae48" stroke-width="2.5"/>
+      <circle cx="44" cy="44" r="34" fill="none" stroke="#dcae48" stroke-width="1"/>
+      <path d="M44 16 L50 36 L44 32 L38 36 Z" fill="#dcae48"/>
+      <path d="M44 72 L50 52 L44 56 L38 52 Z" fill="#dcae48"/>
+      <path d="M16 44 L36 38 L32 44 L36 50 Z" fill="#dcae48"/>
+      <path d="M72 44 L52 38 L56 44 L52 50 Z" fill="#dcae48"/>
+      <circle cx="44" cy="44" r="7" fill="#dcae48"/>
+    </g>
+  </defs>
+</svg>
+
+<div id="wipe">
+  <div class="wipe-panel wipe-l"></div>
+  <div class="wipe-panel wipe-r"></div>
+  <svg class="wipe-crest" viewBox="0 0 88 88"><use href="#kamon"/></svg>
+</div>
+
+<div id="app">
+
+  <section id="screen-title" class="screen active">
+    <div class="title-scrim"></div>
+    <div class="ember" style="left:12%;--sway:34px;animation-duration:7s;animation-delay:.4s;"></div>
+    <div class="ember" style="left:28%;--sway:-26px;animation-duration:9s;animation-delay:2.1s;"></div>
+    <div class="ember" style="left:47%;--sway:18px;animation-duration:8s;animation-delay:1s;"></div>
+    <div class="ember" style="left:63%;--sway:-32px;animation-duration:10s;animation-delay:3.2s;"></div>
+    <div class="ember" style="left:78%;--sway:24px;animation-duration:7.5s;animation-delay:.9s;"></div>
+    <div class="ember" style="left:90%;--sway:-18px;animation-duration:9.5s;animation-delay:2.6s;"></div>
+    <div class="title-block">
+      <svg class="title-crest rv" style="--d:.05s" viewBox="0 0 88 88"><use href="#kamon"/></svg>
+      <h1 class="display title-main rv" style="--d:.15s;position:relative;">
+        <span class="gold-text">せーの！</span><br><span class="gold-text">神輿バトル</span>
+        <span class="title-stamp">祭</span>
+      </h1>
+      <p class="title-sub rv" style="--d:.3s">〇・一秒に、魂を重ねろ</p>
+    </div>
+    <div class="title-bottom">
+      <button id="titleStartBtn" type="button" class="btn-gold btn-large rv" style="--d:.45s;max-width:290px;">祭りをはじめる</button>
+      <div class="title-rule rv" style="--d:.6s"><span>オンライン対戦</span></div>
+    </div>
+  </section>
+
+  <section id="screen-login" class="screen">
+    <div class="center-col">
+      <div class="crest-eyebrow rv" style="--d:.05s"><span>参加登録</span></div>
+      <h2 class="display rv" style="--d:.12s;font-size:23px;">ニックネームで参加</h2>
+      <p class="sub-copy rv" style="--d:.2s;margin:6px 0 20px;max-width:300px;">全国のプレイヤーとリアルタイム対戦！<br>戦績・コイン・衣装はこの端末に保存されます。</p>
+      <input type="text" id="nickInput" class="nick-input rv" style="--d:.28s" maxlength="10" placeholder="ニックネーム（10文字まで）">
+      <button id="joinBtn" type="button" class="btn-gold btn-large rv" style="--d:.36s;max-width:290px;margin-top:14px;">オンラインで参加</button>
+      <p class="demo-note rv" style="--d:.5s">※同じ連に入った仲間と一緒にタップして戦えます。<br>対戦相手が見つからない時はライバル連（CPU）が登場します。</p>
+    </div>
+  </section>
+
+  <section id="screen-qr" class="screen">
+    <div class="qr-wrap">
+      <div class="qr-box rv" style="--d:.05s">
+        <div class="qr-grid" id="qrGrid"></div>
+        <div class="qr-scanline"></div>
+      </div>
+      <p class="qr-caption rv" style="--d:.15s" id="qrCaption">店舗のQRコードを読み取り中…</p>
+      <div class="store-reveal" id="storeReveal">
+        <div class="presents">湊町いろは横丁　PRESENTS</div>
+        <div class="store-name gold-text">湊町祭り酒場</div>
+      </div>
+      <button id="qrSkipBtn" type="button" class="btn-text">スキップ</button>
+    </div>
+  </section>
+
+  <section id="screen-teamselect" class="screen">
+    <div class="crest-eyebrow rv" style="--d:.05s"><span>チームに参加</span></div>
+    <h2 class="display rv" style="--d:.12s;font-size:23px;margin-bottom:6px;">どの連で担ぐ？</h2>
+    <button id="teamRefreshBtn" type="button" class="btn-text rv" style="--d:.18s;align-self:center;margin-bottom:8px;">🔄 連の一覧を更新</button>
+    <div class="team-grid" id="teamGrid"></div>
+    <button id="teamConfirmBtn" type="button" class="btn-gold btn-large rv" style="--d:.3s;margin-top:10px;">このチームで参加する</button>
+  </section>
+
+  <section id="screen-lobby" class="screen">
+    <div class="center-col">
+      <div class="crest-eyebrow rv" style="--d:.05s"><span>エントリー完了</span></div>
+      <h2 id="lobbyTeamName" class="display lobby-team-name gold-text rv" style="--d:.15s"></h2>
+      <div class="lobby-stats rv" style="--d:.25s">
+        <div class="stat"><span class="stat-num gold-text" id="lobbySize"></span><span class="stat-label">人チーム</span></div>
+        <div class="stat"><span class="stat-num gold-text" id="lobbySkill"></span><span class="stat-label">神輿Lv</span></div>
+      </div>
+      <div class="member-row" id="lobbyMemberRow"></div>
+      <div class="join-feed" id="lobbyJoinFeed"></div>
+      <p class="bonus-toast" id="lobbyBonusToast">⛩ エントリー受付完了</p>
+      <button id="lobbyReadyBtn" type="button" class="btn-gold btn-large rv" style="--d:.4s;max-width:290px;margin-top:14px;">準備完了</button>
+    </div>
+  </section>
+
+  <section id="screen-ad" class="screen">
+    <div class="crest-eyebrow rv" style="--d:.05s"><span id="adEyebrow">広告視聴</span></div>
+    <div class="ad-canvas-wrap rv" style="--d:.15s">
+      <canvas id="adCanvas" width="360" height="220"></canvas>
+      <div class="ad-reward-flash" id="adRewardFlash">ご視聴ありがとうございました！</div>
+    </div>
+    <div class="ad-progress-track"><div class="ad-progress-fill" id="adProgressFill"></div></div>
+    <p class="ad-note">広告収益が賞品と運営を支えます</p>
+    <button id="adSkipBtn" type="button" class="btn-text hidden" style="align-self:center;">スキップ ▶</button>
+  </section>
+
+  <section id="screen-match" class="screen">
+    <header class="match-header">
+      <span id="roundIndicator">ラウンド 1 / 3</span>
+      <span id="powerTotal">パワー: 0</span>
+    </header>
+    <div class="mikoshi-live-area">
+      <div class="mikoshi-live-label" id="mikoshiLiveLabel">あなたのお神輿</div>
+    </div>
+    <div id="tapZone" class="tap-zone">
+      <div class="avatar-grid" id="avatarGrid"></div>
+      <div class="tap-stage">
+        <svg class="timer-ring" viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="45" class="ring-bg"></circle>
+          <circle cx="50" cy="50" r="45" class="ring-fg" id="ringFg"></circle>
+        </svg>
+        <div class="tap-target" id="tapTarget"></div>
+        <div class="countdown" id="countdownText"></div>
+        <div class="cue-text" id="cueText"></div>
+        <div class="player-tap-info" id="playerTapInfo"></div>
+      </div>
+      <p class="tap-hint-text">画面のどこでもOK！「せーの！」の瞬間にタップ！</p>
+    </div>
+    <div id="roundResultOverlay" class="result-overlay hidden">
+      <div class="result-card panel seigaiha">
+        <div class="judgement-badge" id="judgementBadge">
+          <span class="judge-emoji" id="judgeEmoji"></span>
+          <span class="judge-label" id="judgeLabel"></span>
+        </div>
+        <p class="sync-detail" id="syncDetail" aria-live="polite"></p>
+        <p class="power-gained" id="powerGained"></p>
+        <p class="medal-gained" id="medalGained"></p>
+        <button class="btn-gold btn-large" id="nextRoundBtn" type="button">次のラウンドへ</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-battle" class="screen">
+    <div class="battle-overlay">
+      <div>
+        <div class="battle-vs-banner" id="battleVsBanner"></div>
+        <div class="power-race">
+          <div class="power-race-team"><div class="power-race-name" id="battlePlayerName"></div><div class="power-race-bar-track"><div class="power-race-bar-fill" id="battlePlayerBar"></div></div></div>
+          <div class="power-race-team enemy"><div class="power-race-name" id="battleEnemyName"></div><div class="power-race-bar-track"><div class="power-race-bar-fill" id="battleEnemyBar"></div></div></div>
+        </div>
+      </div>
+      <div class="battle-center-msg" id="battleCenterMsg"></div>
+      <div class="battle-continue-wrap"><button id="battleContinueBtn" type="button" class="btn-gold">次へ</button></div>
+    </div>
+  </section>
+
+  <section id="screen-prediction" class="screen">
+    <div class="center-col">
+      <div class="crest-eyebrow rv" style="--d:.05s"><span>応援予想チャンス</span></div>
+      <h2 class="display rv" style="--d:.15s;font-size:21px;">悔しい敗戦…でも挽回のチャンス</h2>
+      <p class="sub-copy rv" style="--d:.25s;margin:0 0 18px;">次の試合、どっちの連が勝つか予想しよう</p>
+      <div class="prediction-choice-row rv" style="--d:.35s" id="predictionChoiceRow">
+        <button type="button" class="btn-lacquer" id="predictionBtnA"></button>
+        <button type="button" class="btn-lacquer" id="predictionBtnB"></button>
+      </div>
+      <p class="prediction-suspense hidden" id="predictionSuspense">予想を集計中…</p>
+      <p class="prediction-result" id="predictionResult"></p>
+      <button id="predictionContinueBtn" type="button" class="btn-gold btn-large hidden" style="max-width:290px;margin-top:10px;">結果を見る</button>
+    </div>
+  </section>
+
+  <section id="screen-result" class="screen">
+    <div class="center-col">
+      <div class="crest-eyebrow rv" style="--d:.05s"><span>試合結果</span></div>
+      <h2 class="display result-headline rv" style="--d:.15s" id="resultHeadline"></h2>
+      <div class="result-stat-grid rv" style="--d:.28s">
+        <div class="result-stat panel"><div class="result-stat-num gold-text" id="resultPower"></div><div class="result-stat-label">合計パワー</div></div>
+        <div class="result-stat panel"><div class="result-stat-num gold-text" id="resultMedals"></div><div class="result-stat-label">獲得コイン</div></div>
+      </div>
+      <p class="sub-copy rv" style="--d:.4s;margin:4px 0 20px;" id="resultStageNote"></p>
+      <button id="resultToGachaBtn" type="button" class="btn-gold btn-large rv" style="--d:.5s;max-width:290px;">マイページへ</button>
+    </div>
+  </section>
+
+  <section id="screen-mypage" class="screen">
+    <div class="crest-eyebrow rv" style="--d:.05s"><span>マイページ</span></div>
+    <h2 class="display rv" style="--d:.12s;font-size:25px;" id="mypageName"></h2>
+    <div class="result-stat-grid rv" style="--d:.2s;margin:18px auto;">
+      <div class="result-stat panel"><div class="result-stat-num gold-text" id="mypageCoins"></div><div class="result-stat-label">所持コイン</div></div>
+      <div class="result-stat panel"><div class="result-stat-num gold-text" id="mypageCostumes"></div><div class="result-stat-label">所持衣装</div></div>
+    </div>
+    <p class="stage-label-overlay rv" style="--d:.28s" id="mypageMikoshi"></p>
+    <button id="mypageGachaBtn" type="button" class="btn-gold btn-large rv" style="--d:.35s;margin-top:8px;">🎁 衣装ガチャを引く</button>
+    <button id="mypageAvatarBtn" type="button" class="btn-lacquer btn-large rv" style="--d:.42s;margin-top:10px;">👤 マイアバターを見る</button>
+    <button id="mypageRetryBtn" type="button" class="btn-gold btn-large rv" style="--d:.5s;margin-top:10px;">⛩ 次のトーナメントへ</button>
+    <div style="flex:1;"></div>
+  </section>
+
+  <section id="screen-gacha" class="screen">
+    <div class="center-col">
+      <div class="crest-eyebrow rv" style="--d:.05s"><span>アバターガチャ</span></div>
+      <p class="gacha-medal-badge rv" style="--d:.15s" id="gachaMedalBadge"></p>
+      <div class="gacha-stage rv" style="--d:.25s">
+        <div class="gacha-glow" id="gachaGlow"></div>
+        <div class="gacha-capsule" id="gachaCapsule"></div>
+      </div>
+      <div class="gacha-result-card hidden" id="gachaResultCard">
+        <span class="gacha-avatar-icon" id="gachaAvatarIcon"></span>
+        <div class="gacha-avatar-name" id="gachaAvatarName"></div>
+        <span class="gacha-rarity-badge" id="gachaAvatarRarity"></span>
+      </div>
+      <button id="gachaDrawBtn" type="button" class="btn-gold btn-large rv" style="--d:.35s;max-width:290px;margin-top:16px;">🪙10コインで衣装ガチャ</button>
+      <button id="gachaToEquipBtn" type="button" class="btn-gold btn-large hidden" style="max-width:290px;margin-top:10px;">アバターに着せる</button>
+      <p class="gacha-rates rv" style="--d:.45s">排出率　SSR 1%　SR 9%　R 30%　N 60%</p>
+      <button id="gachaBackBtn" type="button" class="btn-text rv" style="--d:.55s">マイページへ戻る</button>
+    </div>
+  </section>
+
+  <section id="screen-equip" class="screen">
+    <div class="crest-eyebrow"><span>マイアバター</span></div>
+    <p class="stage-label-overlay" id="equipStageLabel"></p>
+    <div style="flex:1;"></div>
+    <div class="equip-list" id="equipList"></div>
+    <button id="equipMoreGachaBtn" type="button" class="btn-lacquer" style="margin-top:12px;position:relative;z-index:2;">もう1回ガチャを引く</button>
+    <button id="retryBtn" type="button" class="btn-gold btn-large" style="margin-top:10px;position:relative;z-index:2;">マイページへ戻る</button>
+  </section>
+
+  <div id="falseStartToast" class="toast hidden">まだ早い！「せーの！」を待って</div>
+  <div class="impact-flash" id="impactFlash"></div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  /* ================= CONSTANTS ================= */
+  var ROUNDS=3, WINDOW_MS=100, TAP_DURATION_MS=5000;
+  var SKILL_STDDEV={ low:130, mid:60, high:25 };
+  var SKILL_LABEL={ low:'低', mid:'中', high:'高' };
+  var JUDGEMENTS=[
+    { key:'MIRACLE', min:1.00, medal:30, label:'MIRACLE!!', emoji:'✨', color:'#f4d35e' },
+    { key:'PERFECT', min:0.80, medal:10, label:'PERFECT!',  emoji:'🌟', color:'#d4af37' },
+    { key:'GREAT',   min:0.60, medal:3,  label:'GREAT!',    emoji:'🔥', color:'#ff6b4a' },
+    { key:'NICE',    min:0.40, medal:1,  label:'NICE',      emoji:'👍', color:'#5ec8d8' },
+    { key:'MISS',    min:0.00, medal:0,  label:'空振り…',    emoji:'💧', color:'#8892a6' }
+  ];
+  var STAGE_LABEL=['まだまだこれから…','提灯に灯がともった','大幕が上がった！','瓔珞が黄金に揺れる','業火の神輿、降臨！'];
+  var TOUR_LABEL=['準々決勝','準決勝','決勝'];
+  var CLASH_LABEL=['一の突き！','二の突き！','決着！！'];
+  var TEAM_NAME_POOL=['雷神会','龍虎睦','疾風連','朱雀組','黄金衆','豪傑連','不知火睦','阿吽組','花火連','千年睦'];
+  var MIKOSHI_VARIANTS={
+    classic:{ label:'黄金', svgRoof:'#1e1838', svgBody:'#dcae48' },
+    kuro:{ label:'漆黒', svgRoof:'#2a2038', svgBody:'#1c1626' },
+    shiro:{ label:'白鳳', svgRoof:'#b03424', svgBody:'#ece2c8' }
+  };
+  var PRESET_TEAMS=[
+    { name:'湊組', size:12, skill:'mid', variant:'classic' },
+    { name:'龍虎睦', size:20, skill:'high', variant:'kuro' },
+    { name:'疾風連', size:8, skill:'low', variant:'shiro' }
+  ];
+  var AVATAR_CATALOG=[
+    { key:'happiAo', rarity:'N', name:'藍染め法被', icon:'🥋', effectType:'happi', color:0x2b4ea8 },
+    { key:'happiMidori', rarity:'N', name:'翠の法被', icon:'🟢', effectType:'happi', color:0x2f8a5a },
+    { key:'happiMurasaki', rarity:'N', name:'江戸紫の法被', icon:'🟣', effectType:'happi', color:0x6a3fa0 },
+    { key:'happiShu', rarity:'N', name:'朱色の法被', icon:'🔴', effectType:'happi', color:0xc9321f },
+    { key:'shiroHachimaki', rarity:'N', name:'白鉢巻', icon:'⬜', effectType:'hachimaki', color:0xf6f1e4 },
+    { key:'festivalFan', rarity:'N', name:'祭り扇子', icon:'🪭', effectType:'fan' },
+    { key:'goldObi', rarity:'R', name:'金襴の帯', icon:'✴️', effectType:'obi', color:0xf1cf6b },
+    { key:'lanternStaff', rarity:'R', name:'提灯持ち', icon:'🏮', effectType:'staff' },
+    { key:'sakuraAura', rarity:'R', name:'桜吹雪のオーラ', icon:'🌸', effectType:'aura', color:0xffb7d5, dir:-1 },
+    { key:'flameHaori', rarity:'R', name:'緋色の羽織', icon:'🔥', effectType:'haori', color:0xb32410, emissive:0x551005 },
+    { key:'kitsuneMask', rarity:'SR', name:'狐のお面', icon:'🦊', effectType:'mask' },
+    { key:'rainbowHachimaki', rarity:'SR', name:'虹色鉢巻', icon:'🌈', effectType:'hachimakiRainbow' },
+    { key:'ryuHaori', rarity:'SR', name:'昇り龍の羽織', icon:'🐉', effectType:'haori', color:0x1e6b46, emissive:0x0a2a1a },
+    { key:'shachiHelm', rarity:'SSR', name:'黄金の鯱兜', icon:'✨', effectType:'helm' },
+    { key:'phoenixAura', rarity:'SSR', name:'不死鳥のオーラ', icon:'🕊️', effectType:'aura', color:0xffd27a, dir:1 }
+  ];
+  var AD_SPONSORS=[
+    { name:'祭りサイダー', tagline:'夏の夜に、しゅわっと一杯', shape:'bottle', bgTop:'#123a6b', bgBottom:'#0a1a33', vesselColor:'#bfe6ff',
+      bubbles:[{x:.42,r:3,offset:0},{x:.5,r:2,offset:40},{x:.58,r:3,offset:80},{x:.46,r:2,offset:120},{x:.54,r:2.5,offset:20}] },
+    { name:'炎神ビール（ノンアル）', tagline:'祭りの熱さを、キリッと爽快に', shape:'mug', bgTop:'#5a1f14', bgBottom:'#1a0a08', vesselColor:'#ffcf7a',
+      bubbles:[{x:.4,r:2,offset:10},{x:.5,r:2.5,offset:60},{x:.6,r:2,offset:100},{x:.45,r:1.5,offset:140}] }
+  ];
+  var AD_REWARD=5, PREDICTION_CORRECT_REWARD=10, JOIN_BONUS=10, GACHA_COST=10;
+
+  /* ================= STATE ================= */
+  var state={
+    pid:null, token:null, playerName:'',
+    roomId:null, teamName:'', teamSize:8, variant:'classic', members:[], mikoshiLevel:0,
+    round:0, totalPower:0, totalMedals:0, phase:'idle', playerTapped:false,
+    cuePerf:0, roundTimers:[], tappedPids:{}, roundEvents:[], botTimers:[],
+    ownedAvatars:[], equippedKeys:{},
+    enemyTeamName:'', enemySize:0, enemySkill:'mid', enemyVariant:'classic', enemyPower:0, enemyLevel:0,
+    battleWinnerSide:null, battleAnimDone:false, pendingSettle:null, lastOutcome:'',
+    tourRound:0, tourWins:0, earnedThisTour:0, playerContrib:0,
+    selectedTeamId:null, selectedCreate:true, customTeamName:'', customVariant:'classic', teamList:[],
+    needAd:true, advancing:false, awaitingWelcome:false, gachaBusy:false
+  };
+
+  /* ================= DOM REFS ================= */
+  function $(id){ return document.getElementById(id); }
+  var titleStartBtn=$('titleStartBtn');
+  var qrGrid=$('qrGrid'), qrCaption=$('qrCaption'), storeReveal=$('storeReveal'), qrSkipBtn=$('qrSkipBtn');
+  var teamGrid=$('teamGrid'), teamConfirmBtn=$('teamConfirmBtn');
+  var lobbyTeamName=$('lobbyTeamName'), lobbySize=$('lobbySize'), lobbySkill=$('lobbySkill'), lobbyMemberRow=$('lobbyMemberRow'), lobbyBonusToast=$('lobbyBonusToast'), lobbyReadyBtn=$('lobbyReadyBtn');
+  var adEyebrow=$('adEyebrow'), adCanvas=$('adCanvas'), adRewardFlash=$('adRewardFlash'), adProgressFill=$('adProgressFill'), adSkipBtn=$('adSkipBtn');
+  var roundIndicatorEl=$('roundIndicator'), powerTotalEl=$('powerTotal');
+  var mikoshiLiveLabel=$('mikoshiLiveLabel');
+  var tapZone=$('tapZone'), avatarGridEl=$('avatarGrid');
+  var countdownText=$('countdownText'), cueText=$('cueText'), ringFg=$('ringFg'), tapTarget=$('tapTarget'), playerTapInfo=$('playerTapInfo');
+  var roundResultOverlay=$('roundResultOverlay'), judgementBadge=$('judgementBadge');
+  var judgeEmoji=$('judgeEmoji'), judgeLabel=$('judgeLabel'), syncDetail=$('syncDetail');
+  var powerGained=$('powerGained'), medalGained=$('medalGained'), nextRoundBtn=$('nextRoundBtn');
+  var threeCanvas=$('threeCanvas');
+  var battleVsBanner=$('battleVsBanner');
+  var battlePlayerName=$('battlePlayerName'), battlePlayerBar=$('battlePlayerBar'), battleEnemyName=$('battleEnemyName'), battleEnemyBar=$('battleEnemyBar');
+  var battleCenterMsg=$('battleCenterMsg'), battleContinueBtn=$('battleContinueBtn');
+  var predictionChoiceRow=$('predictionChoiceRow'), predictionBtnA=$('predictionBtnA'), predictionBtnB=$('predictionBtnB');
+  var predictionSuspense=$('predictionSuspense'), predictionResult=$('predictionResult'), predictionContinueBtn=$('predictionContinueBtn');
+  var resultHeadline=$('resultHeadline'), resultPower=$('resultPower'), resultMedals=$('resultMedals'), resultStageNote=$('resultStageNote'), resultToGachaBtn=$('resultToGachaBtn');
+  var gachaMedalBadge=$('gachaMedalBadge'), gachaGlow=$('gachaGlow'), gachaCapsule=$('gachaCapsule'), gachaResultCard=$('gachaResultCard');
+  var gachaAvatarIcon=$('gachaAvatarIcon'), gachaAvatarName=$('gachaAvatarName'), gachaAvatarRarity=$('gachaAvatarRarity');
+  var gachaDrawBtn=$('gachaDrawBtn'), gachaToEquipBtn=$('gachaToEquipBtn');
+  var equipStageLabel=$('equipStageLabel'), equipList=$('equipList'), equipMoreGachaBtn=$('equipMoreGachaBtn'), retryBtn=$('retryBtn');
+  var falseStartToast=$('falseStartToast'), impactFlash=$('impactFlash');
+
+  /* ================= UTILS ================= */
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+  function clamp01(t){ return t<0?0:(t>1?1:t); }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+  function easeInCubic(t){ return t*t*t; }
+  function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+  function randomNormal(mean, stddev){
+    var u=0,v=0; while(u===0) u=Math.random(); while(v===0) v=Math.random();
+    return mean+Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)*stddev;
+  }
+  function clampReaction(rt){ return Math.max(60, rt); }
+  function escapeHtml(str){ var d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+  function computeBestWindow(events, windowMs){
+    if(events.length===0) return { best:0, winners:[] };
+    var sorted=events.slice().sort(function(a,b){ return a.time-b.time; });
+    var best=0,bestJ=0,bestI=-1,j=0;
+    for(var i=0;i<sorted.length;i++){
+      while(sorted[i].time - sorted[j].time > windowMs) j++;
+      var count=i-j+1;
+      if(count>best){ best=count; bestJ=j; bestI=i; }
+    }
+    return { best:best, winners:sorted.slice(bestJ,bestI+1) };
+  }
+  function getJudgement(pct){
+    for(var i=0;i<JUDGEMENTS.length;i++){ if(pct>=JUDGEMENTS[i].min) return JUDGEMENTS[i]; }
+    return JUDGEMENTS[JUDGEMENTS.length-1];
+  }
+  function getStage(power, size){
+    var ratio=power/(size*ROUNDS);
+    if(ratio>=0.85) return 4;
+    if(ratio>=0.65) return 3;
+    if(ratio>=0.45) return 2;
+    if(ratio>=0.25) return 1;
+    return 0;
+  }
+  function rawShowScreen(id){
+    var all=document.querySelectorAll('.screen');
+    for(var i=0;i<all.length;i++) all[i].classList.remove('active');
+    $(id).classList.add('active');
+  }
+  var wipeEl=document.getElementById('wipe'), wiping=false;
+  function showScreen(id){
+    if(wiping || !wipeEl){ rawShowScreen(id); return; }
+    wiping=true;
+    wipeEl.classList.remove('opening');
+    wipeEl.classList.add('closing');
+    setTimeout(function(){
+      wipeEl.classList.remove('closing'); wipeEl.classList.add('hold');
+      rawShowScreen(id);
+      requestAnimationFrame(function(){ requestAnimationFrame(function(){
+        wipeEl.classList.remove('hold'); wipeEl.classList.add('opening');
+        setTimeout(function(){ wipeEl.classList.remove('opening'); wiping=false; }, 600);
+      }); });
+    }, 470);
+  }
+  function simulateTeam(teamSize, skill){
+    var total=0;
+    for(var r=0;r<ROUNDS;r++){
+      var events=[];
+      for(var i=0;i<teamSize;i++){
+        var rt=clampReaction(randomNormal(250, SKILL_STDDEV[skill]));
+        if(rt<=TAP_DURATION_MS) events.push({ id:'e'+i, time:rt });
+      }
+      total+=computeBestWindow(events, WINDOW_MS).best;
+    }
+    return total;
+  }
+  function playImpactFlash(){
+    impactFlash.classList.remove('play'); void impactFlash.offsetWidth; impactFlash.classList.add('play');
+  }
+  var AC=null;
+  function initAudio(){
+    if(AC) return;
+    try{ var Ctx=window.AudioContext||window.webkitAudioContext; if(Ctx) AC=new Ctx(); if(AC&&AC.state==='suspended') AC.resume(); }catch(e){ AC=null; }
+  }
+  function tone(cfg){ if(!AC) return; try{ var t=AC.currentTime+(cfg.delay||0);
+    var o=AC.createOscillator(), g=AC.createGain(); o.type=cfg.type||'sine';
+    o.frequency.setValueAtTime(cfg.f0,t); if(cfg.f1) o.frequency.exponentialRampToValueAtTime(cfg.f1,t+cfg.dur);
+    g.gain.setValueAtTime(cfg.gain,t); g.gain.exponentialRampToValueAtTime(0.0001,t+cfg.dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+cfg.dur+0.05); }catch(e){} }
+  function noiseHit(dur,gain,delay){ if(!AC) return; try{ var t=AC.currentTime+(delay||0);
+    var len=Math.max(1,Math.floor(AC.sampleRate*dur)), buf=AC.createBuffer(1,len,AC.sampleRate), d=buf.getChannelData(0);
+    for(var i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+    var s=AC.createBufferSource(); s.buffer=buf; var f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1600;
+    var g=AC.createGain(); g.gain.value=gain; s.connect(f); f.connect(g); g.connect(AC.destination); s.start(t); }catch(e){} }
+  var SFX={
+    don:function(){ tone({f0:150,f1:48,dur:0.16,gain:0.5}); },
+    doon:function(){ tone({f0:110,f1:36,dur:0.4,gain:0.75}); noiseHit(0.1,0.2); },
+    tick:function(){ tone({type:'triangle',f0:920,dur:0.06,gain:0.12}); },
+    clash:function(){ tone({f0:95,f1:30,dur:0.5,gain:0.9}); noiseHit(0.22,0.5); },
+    win:function(){ [660,880,1100].forEach(function(f,i){ tone({type:'triangle',f0:f,dur:0.4,gain:0.2,delay:i*0.13}); }); },
+    lose:function(){ tone({type:'triangle',f0:330,f1:170,dur:0.7,gain:0.18}); },
+    ssr:function(){ [523,659,784,1046,1318].forEach(function(f,i){ tone({type:'triangle',f0:f,dur:0.5,gain:0.18,delay:i*0.09}); }); }
+  };
+
+  /* ================= 3D: TEXTURES & PARTICLES ================= */
+  function makeTextTexture(text, opts){
+    opts=opts||{};
+    var canvas=document.createElement('canvas');
+    canvas.width=256; canvas.height=96;
+    var ctx=canvas.getContext('2d');
+    ctx.fillStyle=opts.bg||'#16254f'; ctx.fillRect(0,0,256,96);
+    if(opts.fiery){ ctx.fillStyle='rgba(255,90,45,0.55)'; ctx.fillRect(0,0,256,38); }
+    ctx.fillStyle=opts.fg||'#f4d35e';
+    ctx.font='bold 40px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(text,128,48);
+    var tex=new THREE.CanvasTexture(canvas); tex.needsUpdate=true; return tex;
+  }
+  function makeCharTexture(ch){
+    var cv=document.createElement('canvas'); cv.width=64; cv.height=64;
+    var cx=cv.getContext('2d'); cx.fillStyle='#c23b22'; cx.fillRect(0,0,64,64);
+    cx.fillStyle='#fff'; cx.font='bold 40px sans-serif'; cx.textAlign='center'; cx.textBaseline='middle'; cx.fillText(ch,32,34);
+    var t=new THREE.CanvasTexture(cv); t.needsUpdate=true; return t;
+  }
+  function buildParticleSet(cfg){
+    var n=cfg.count, pos=new Float32Array(n*3), speeds=new Float32Array(n);
+    for(var i=0;i<n;i++){
+      var a=Math.random()*Math.PI*2, r=Math.random()*cfg.radius;
+      pos[i*3]=Math.cos(a)*r; pos[i*3+1]=cfg.yMin+Math.random()*(cfg.yMax-cfg.yMin); pos[i*3+2]=Math.sin(a)*r*0.8;
+      speeds[i]=cfg.speedMin+Math.random()*(cfg.speedMax-cfg.speedMin);
+    }
+    var g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+    var m=new THREE.PointsMaterial({ color:cfg.color, size:cfg.size, transparent:true, opacity:cfg.opacity||0.85, blending:THREE.AdditiveBlending, depthWrite:false });
+    var p=new THREE.Points(g,m);
+    p.userData.pcfg={ speeds:speeds, yMin:cfg.yMin, yMax:cfg.yMax, dir:cfg.dir };
+    return p;
+  }
+  function animateParticleSet(p,dt){
+    var c=p.userData.pcfg, pos=p.geometry.attributes.position;
+    for(var i=0;i<c.speeds.length;i++){
+      var y=pos.getY(i)+c.speeds[i]*dt*c.dir;
+      if(c.dir>0 && y>c.yMax) y=c.yMin;
+      if(c.dir<0 && y<c.yMin) y=c.yMax;
+      pos.setY(i,y);
+    }
+    pos.needsUpdate=true;
+  }
+  function animateAllParticles(root, dt){
+    root.traverse(function(o){ if(o.userData && o.userData.pcfg && o.visible!==false) animateParticleSet(o, dt); });
+  }
+  function spawnSparkBurst(x,y,z){
+    var n=34, pos=new Float32Array(n*3), vel=[];
+    for(var i=0;i<n;i++){
+      pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z;
+      var a=Math.random()*Math.PI*2, e=Math.random()*Math.PI-Math.PI/2, sp=1.6+Math.random()*2.6;
+      vel.push(new THREE.Vector3(Math.cos(a)*Math.cos(e)*sp, Math.abs(Math.sin(e))*sp+1.2, Math.sin(a)*Math.cos(e)*sp*0.6));
+    }
+    var g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+    var m=new THREE.PointsMaterial({ color:0xffd76a, size:0.09, transparent:true, opacity:1, blending:THREE.AdditiveBlending, depthWrite:false });
+    var p=new THREE.Points(g,m);
+    p.userData.burst={ vel:vel, age:0, life:650 };
+    return p;
+  }
+  function animateSparkBurst(p,dtMs){
+    var b=p.userData.burst, pos=p.geometry.attributes.position, dt=dtMs/1000;
+    b.age+=dtMs;
+    for(var i=0;i<b.vel.length;i++){
+      b.vel[i].y-=6.5*dt;
+      pos.setX(i,pos.getX(i)+b.vel[i].x*dt);
+      pos.setY(i,pos.getY(i)+b.vel[i].y*dt);
+      pos.setZ(i,pos.getZ(i)+b.vel[i].z*dt);
+    }
+    pos.needsUpdate=true;
+    p.material.opacity=Math.max(0,1-b.age/b.life);
+    return b.age<b.life;
+  }
+
+  /* ================= 3D v6: TEXTURES ================= */
+  function makeCanvas(w,h){ var c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+  function srgb(tex){ if(THREE.sRGBEncoding!==undefined) tex.encoding=THREE.sRGBEncoding; tex.needsUpdate=true; return tex; }
+
+  /* hammered-gold relief: color + bump share one canvas pass */
+  function makeGoldReliefTextures(){
+    var W=256, cv=makeCanvas(W,W), cx=cv.getContext('2d');
+    cx.fillStyle='#c9a23e'; cx.fillRect(0,0,W,W);
+    var i,x,y,r;
+    for(i=0;i<900;i++){
+      x=Math.random()*W; y=Math.random()*W; r=1+Math.random()*2.2;
+      cx.fillStyle='rgba(255,236,170,'+(0.05+Math.random()*0.1)+')';
+      cx.beginPath(); cx.arc(x,y,r,0,Math.PI*2); cx.fill();
+      cx.fillStyle='rgba(96,64,10,'+(0.04+Math.random()*0.08)+')';
+      cx.beginPath(); cx.arc(x+1.2,y+1.4,r,0,Math.PI*2); cx.fill();
+    }
+    /* arabesque medallion rows (唐草の暗喩) */
+    for(var gy=0;gy<4;gy++){ for(var gx=0;gx<4;gx++){
+      var cxp=32+gx*64, cyp=32+gy*64;
+      cx.strokeStyle='rgba(120,84,16,0.5)'; cx.lineWidth=2.5;
+      cx.beginPath(); cx.arc(cxp,cyp,18,0,Math.PI*2); cx.stroke();
+      cx.strokeStyle='rgba(255,238,180,0.55)'; cx.lineWidth=1.4;
+      cx.beginPath(); cx.arc(cxp,cyp,12,0,Math.PI*2); cx.stroke();
+      cx.beginPath(); cx.arc(cxp,cyp,5,0,Math.PI*2); cx.stroke();
+    }}
+    var color=srgb(new THREE.CanvasTexture(cv));
+    color.wrapS=color.wrapT=THREE.RepeatWrapping;
+    /* bump: grayscale version */
+    var bv=makeCanvas(W,W), bx=bv.getContext('2d');
+    bx.fillStyle='#808080'; bx.fillRect(0,0,W,W);
+    for(i=0;i<900;i++){
+      x=Math.random()*W; y=Math.random()*W; r=1+Math.random()*2.4;
+      bx.fillStyle='rgba(255,255,255,'+(0.06+Math.random()*0.12)+')';
+      bx.beginPath(); bx.arc(x,y,r,0,Math.PI*2); bx.fill();
+    }
+    for(gy=0;gy<4;gy++){ for(gx=0;gx<4;gx++){
+      bx.strokeStyle='rgba(255,255,255,0.7)'; bx.lineWidth=3;
+      bx.beginPath(); bx.arc(32+gx*64,32+gy*64,18,0,Math.PI*2); bx.stroke();
+      bx.beginPath(); bx.arc(32+gx*64,32+gy*64,11,0,Math.PI*2); bx.stroke();
+    }}
+    var bump=new THREE.CanvasTexture(bv); bump.needsUpdate=true;
+    bump.wrapS=bump.wrapT=THREE.RepeatWrapping;
+    return { color:color, bump:bump };
+  }
+
+  /* gilded lattice for shrine-body panels (格子) */
+  function makeLatticeTexture(){
+    var cv=makeCanvas(256,256), cx=cv.getContext('2d');
+    var g=cx.createLinearGradient(0,0,0,256);
+    g.addColorStop(0,'#d8b04a'); g.addColorStop(0.5,'#b8912f'); g.addColorStop(1,'#d0a840');
+    cx.fillStyle=g; cx.fillRect(0,0,256,256);
+    cx.strokeStyle='rgba(70,46,8,0.75)'; cx.lineWidth=5;
+    for(var i=0;i<=8;i++){
+      cx.beginPath(); cx.moveTo(i*32,0); cx.lineTo(i*32,256); cx.stroke();
+      cx.beginPath(); cx.moveTo(0,i*32); cx.lineTo(256,i*32); cx.stroke();
+    }
+    cx.strokeStyle='rgba(255,238,180,0.5)'; cx.lineWidth=1.5;
+    for(i=0;i<=8;i++){
+      cx.beginPath(); cx.moveTo(i*32-3,0); cx.lineTo(i*32-3,256); cx.stroke();
+      cx.beginPath(); cx.moveTo(0,i*32-3); cx.lineTo(256,i*32-3); cx.stroke();
+    }
+    var t=srgb(new THREE.CanvasTexture(cv)); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+    return t;
+  }
+
+  /* gilded door with framed crest */
+  function makeDoorTexture(){
+    var cv=makeCanvas(128,160), cx=cv.getContext('2d');
+    var g=cx.createLinearGradient(0,0,0,160);
+    g.addColorStop(0,'#e8c765'); g.addColorStop(0.55,'#c39a35'); g.addColorStop(1,'#e0bd58');
+    cx.fillStyle=g; cx.fillRect(0,0,128,160);
+    cx.strokeStyle='#5c3c08'; cx.lineWidth=7; cx.strokeRect(7,7,114,146);
+    cx.strokeStyle='#ffeeb0'; cx.lineWidth=2; cx.strokeRect(15,15,98,130);
+    cx.strokeStyle='#5c3c08'; cx.lineWidth=3;
+    cx.beginPath(); cx.moveTo(64,15); cx.lineTo(64,145); cx.stroke();
+    /* twin ring pulls + crest */
+    [40,88].forEach(function(dx){
+      cx.strokeStyle='#4a3006'; cx.lineWidth=4;
+      cx.beginPath(); cx.arc(dx,96,10,0,Math.PI*2); cx.stroke();
+      cx.fillStyle='#3a2604'; cx.beginPath(); cx.arc(dx,84,4.5,0,Math.PI*2); cx.fill();
+      cx.strokeStyle='#7a5410'; cx.lineWidth=2.4;
+      cx.beginPath(); cx.arc(dx,46,13,0,Math.PI*2); cx.stroke();
+      cx.beginPath(); cx.arc(dx,46,7,0,Math.PI*2); cx.stroke();
+    });
+    return srgb(new THREE.CanvasTexture(cv));
+  }
+
+  /* black-lacquer sheen with fine gold makie flecks */
+  function makeLacquerTexture(){
+    var cv=makeCanvas(128,128), cx=cv.getContext('2d');
+    var g=cx.createLinearGradient(0,0,128,128);
+    g.addColorStop(0,'#241d2e'); g.addColorStop(0.5,'#171220'); g.addColorStop(1,'#231c2c');
+    cx.fillStyle=g; cx.fillRect(0,0,128,128);
+    for(var i=0;i<130;i++){
+      cx.fillStyle='rgba(216,176,74,'+(0.04+Math.random()*0.1)+')';
+      cx.fillRect(Math.random()*128,Math.random()*128,1.3,1.3);
+    }
+    var t=srgb(new THREE.CanvasTexture(cv)); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+    return t;
+  }
+
+  /* environment cube: warm festival dusk with lantern glints — sells the gold */
+  function buildEnvCube(){
+    function face(kind){
+      var cv=makeCanvas(64,64), cx=cv.getContext('2d');
+      var g=cx.createLinearGradient(0,0,0,64);
+      if(kind==='up'){ g.addColorStop(0,'#5a4f96'); g.addColorStop(1,'#7a68b4'); }
+      else if(kind==='down'){ g.addColorStop(0,'#3a2c22'); g.addColorStop(1,'#1c140e'); }
+      else { g.addColorStop(0,'#655a9e'); g.addColorStop(0.55,'#9a6a70'); g.addColorStop(0.78,'#e0925a'); g.addColorStop(1,'#4a3428'); }
+      cx.fillStyle=g; cx.fillRect(0,0,64,64);
+      if(kind==='side'){
+        for(var i=0;i<9;i++){
+          var x=4+Math.random()*56, y=30+Math.random()*22, r=2+Math.random()*3.4;
+          var rg=cx.createRadialGradient(x,y,0,x,y,r*2.6);
+          rg.addColorStop(0,'rgba(255,220,150,0.95)'); rg.addColorStop(1,'rgba(255,160,80,0)');
+          cx.fillStyle=rg; cx.beginPath(); cx.arc(x,y,r*2.6,0,Math.PI*2); cx.fill();
+        }
+      }
+      if(kind==='up'){
+        var rg2=cx.createRadialGradient(46,20,0,46,20,16);
+        rg2.addColorStop(0,'rgba(246,236,208,0.9)'); rg2.addColorStop(1,'rgba(246,236,208,0)');
+        cx.fillStyle=rg2; cx.beginPath(); cx.arc(46,20,16,0,Math.PI*2); cx.fill();
+      }
+      return cv;
+    }
+    var faces=[face('side'),face('side'),face('up'),face('down'),face('side'),face('side')];
+    var cube=new THREE.CubeTexture(faces);
+    if(THREE.sRGBEncoding!==undefined) cube.encoding=THREE.sRGBEncoding;
+    cube.needsUpdate=true;
+    return cube;
+  }
+  var ENVCUBE=null;
+
+  /* ================= 3D v6: MATERIAL FACTORY ================= */
+  var MATCACHE={};
+  function goldMaterial(){
+    if(MATCACHE.gold) return MATCACHE.gold;
+    var rel=makeGoldReliefTextures();
+    MATCACHE.gold=new THREE.MeshStandardMaterial({
+      color:0xE8BE58, map:rel.color, bumpMap:rel.bump, bumpScale:0.012,
+      metalness:0.98, roughness:0.3, envMap:ENVCUBE, envMapIntensity:1.25,
+      emissive:0x2a1c04, emissiveIntensity:0.28
+    });
+    return MATCACHE.gold;
+  }
+  function brightGold(){
+    if(MATCACHE.bright) return MATCACHE.bright;
+    MATCACHE.bright=new THREE.MeshStandardMaterial({
+      color:0xF6D878, metalness:1.0, roughness:0.16, envMap:ENVCUBE, envMapIntensity:1.6,
+      emissive:0x3a2a08, emissiveIntensity:0.42
+    });
+    return MATCACHE.bright;
+  }
+  function lacquerBlack(){
+    if(MATCACHE.lac) return MATCACHE.lac;
+    MATCACHE.lac=new THREE.MeshStandardMaterial({
+      color:0x1c1626, map:makeLacquerTexture(), metalness:0.62, roughness:0.18,
+      envMap:ENVCUBE, envMapIntensity:0.9
+    });
+    return MATCACHE.lac;
+  }
+  function lacquerRed(){
+    if(MATCACHE.red) return MATCACHE.red;
+    MATCACHE.red=new THREE.MeshStandardMaterial({
+      color:0xa02414, metalness:0.35, roughness:0.28, envMap:ENVCUBE, envMapIntensity:0.7,
+      emissive:0x2a0602, emissiveIntensity:0.3
+    });
+    return MATCACHE.red;
+  }
+  function latticeGold(){
+    if(MATCACHE.lattice) return MATCACHE.lattice;
+    var t=makeLatticeTexture();
+    MATCACHE.lattice=new THREE.MeshStandardMaterial({
+      color:0xD8B04A, map:t, metalness:0.92, roughness:0.34,
+      envMap:ENVCUBE, envMapIntensity:1.1, emissive:0x241804, emissiveIntensity:0.25
+    });
+    return MATCACHE.lattice;
+  }
+
+  function makeContactShadow(size,x,y,z){
+    var cv=makeCanvas(128,128), cx=cv.getContext('2d');
+    var g=cx.createRadialGradient(64,64,8,64,64,62);
+    g.addColorStop(0,'rgba(8,4,18,0.55)'); g.addColorStop(1,'rgba(8,4,18,0)');
+    cx.fillStyle=g; cx.beginPath(); cx.arc(64,64,62,0,Math.PI*2); cx.fill();
+    var t=new THREE.CanvasTexture(cv); t.needsUpdate=true;
+    var m=new THREE.Mesh(new THREE.PlaneGeometry(size,size),
+      new THREE.MeshBasicMaterial({ map:t, transparent:true, depthWrite:false }));
+    m.rotation.x=-Math.PI/2; m.position.set(x,y,z);
+    return m;
+  }
+
+  /* ================= 3D v6: MIKOSHI PARTS ================= */
+  /* 唐破風屋根: deep concave sag + strong flared upturn (LatheGeometry(pts,4) technique) */
+  function buildCurvedRoof(mat){
+    var pts=[], N=14;
+    for(var i=0;i<=N;i++){
+      var t=i/N;
+      var r=0.06+t*1.16;
+      var y=0.58*Math.pow(1-t,1.85);          /* concave sag */
+      if(t>0.68){ var u=(t-0.68)/0.32; y+=u*u*0.34; }  /* 反り上がり */
+      pts.push(new THREE.Vector2(r,y));
+    }
+    /* under-eave return so the roof reads thick from below */
+    pts.push(new THREE.Vector2(1.22,0.135));
+    pts.push(new THREE.Vector2(1.06,0.10));
+    var geo=new THREE.LatheGeometry(pts,4); geo.rotateY(Math.PI/4);
+    var m=new THREE.Mesh(geo,mat);
+    return m;
+  }
+  /* 蕨手 */
+  function buildWarabite(mat){
+    var pts=[];
+    for(var i=0;i<=8;i++){
+      var t=i/8, a=t*Math.PI*0.95;
+      pts.push(new THREE.Vector3(0.16*Math.sin(a)*(1-t*0.35), 0.19*(1-Math.cos(a))*(1-t*0.25), 0));
+    }
+    return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),16,0.022,7,false), mat);
+  }
+  /* 軒の金円紋: medallions along the 4 square eave edges */
+  function buildEaveMedallions(hx,hz,y,mat){
+    var g=new THREE.Group();
+    var disc=new THREE.CylinderGeometry(0.055,0.055,0.02,12);
+    function row(side,n,span){
+      for(var i=0;i<n;i++){
+        var t=-span+(i/(n-1))*span*2;
+        var med=new THREE.Mesh(disc, mat);
+        var ring=new THREE.Mesh(new THREE.TorusGeometry(0.062,0.011,6,14), mat);
+        if(side===0){ med.position.set(t,y,hz); med.rotation.x=Math.PI/2; ring.position.set(t,y,hz+0.005); }
+        if(side===1){ med.position.set(t,y,-hz); med.rotation.x=Math.PI/2; ring.position.set(t,y,-hz-0.005); ring.rotation.y=Math.PI; }
+        if(side===2){ med.position.set(hx,y,t); med.rotation.z=Math.PI/2; ring.position.set(hx+0.005,y,t); ring.rotation.y=Math.PI/2; }
+        if(side===3){ med.position.set(-hx,y,t); med.rotation.z=Math.PI/2; ring.position.set(-hx-0.005,y,t); ring.rotation.y=-Math.PI/2; }
+        g.add(med, ring);
+      }
+    }
+    row(0,5,hx*0.82); row(1,5,hx*0.82); row(2,4,hz*0.76); row(3,4,hz*0.76);
+    return g;
+  }
+  /* 枡組: bracket clusters under the eaves for structural density */
+  function buildMasugumi(hx,hz,y,mat){
+    var g=new THREE.Group();
+    var cube=new THREE.BoxGeometry(0.075,0.05,0.075);
+    var arm=new THREE.BoxGeometry(0.15,0.032,0.05);
+    function row(side,n,span){
+      for(var i=0;i<n;i++){
+        var t=-span+(i/(n-1))*span*2;
+        var b=new THREE.Mesh(cube,mat), a=new THREE.Mesh(arm,mat);
+        if(side===0){ b.position.set(t,y,hz); a.position.set(t,y+0.045,hz); }
+        if(side===1){ b.position.set(t,y,-hz); a.position.set(t,y+0.045,-hz); }
+        if(side===2){ b.position.set(hx,y,t); a.position.set(hx,y+0.045,t); a.rotation.y=Math.PI/2; }
+        if(side===3){ b.position.set(-hx,y,t); a.position.set(-hx,y+0.045,t); a.rotation.y=Math.PI/2; }
+        g.add(b,a);
+      }
+    }
+    row(0,4,hx*0.66); row(1,4,hx*0.66); row(2,3,hz*0.6); row(3,3,hz*0.6);
+    return g;
+  }
+  /* 大鳳凰 v2: spread wings of layered feathers, crest, flowing tail */
+  function buildPhoenix(){
+    var g=new THREE.Group(), m=brightGold();
+    /* body: teardrop lathe */
+    var bp=[];
+    for(var i=0;i<=10;i++){
+      var t=i/10;
+      bp.push(new THREE.Vector2(0.085*Math.sin(t*Math.PI)*(1-t*0.28), t*0.3));
+    }
+    var body=new THREE.Mesh(new THREE.LatheGeometry(bp,10), m);
+    body.rotation.x=Math.PI/2-0.28; body.position.set(0,0.05,0.02); g.add(body);
+    /* chest keel */
+    var chest=new THREE.Mesh(new THREE.SphereGeometry(0.062,10,10), m);
+    chest.scale.set(0.85,1.1,0.85); chest.position.set(0,0.075,0.13); g.add(chest);
+    /* S-curved neck */
+    var neck=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0,0.10,0.14), new THREE.Vector3(0,0.17,0.20),
+      new THREE.Vector3(0,0.245,0.205), new THREE.Vector3(0,0.29,0.185)
+    ]),12,0.026,8,false), m); g.add(neck);
+    var head=new THREE.Mesh(new THREE.SphereGeometry(0.046,10,10), m);
+    head.scale.set(0.9,0.95,1.15); head.position.set(0,0.30,0.185); g.add(head);
+    var beak=new THREE.Mesh(new THREE.ConeGeometry(0.019,0.075,7), m);
+    beak.rotation.x=Math.PI/2+0.18; beak.position.set(0,0.293,0.245); g.add(beak);
+    /* 冠 crest: 3 fanned filaments */
+    for(i=-1;i<=1;i++){
+      var cr=new THREE.Mesh(new THREE.ConeGeometry(0.009,0.09,5), m);
+      cr.position.set(i*0.018,0.36,0.165-Math.abs(i)*0.012);
+      cr.rotation.x=-0.5; cr.rotation.z=i*0.35; g.add(cr);
+    }
+    /* wings: 5 layered feather blades per side, fanned + swept up */
+    for(var s=-1;s<=1;s+=2){
+      var wing=new THREE.Group();
+      for(var f=0;f<5;f++){
+        var len=0.34-f*0.038;
+        var feather=new THREE.Mesh(new THREE.ConeGeometry(0.032,len,6), m);
+        feather.scale.z=0.42;
+        feather.position.set(s*(0.09+f*0.052), 0.10+f*0.052, 0.02-f*0.015);
+        feather.rotation.z=s*(Math.PI/2.5-f*0.16);
+        wing.add(feather);
+      }
+      wing.position.y=0.02; g.add(wing);
+    }
+    /* tail: 5 long curved plumes with bead tips */
+    for(i=0;i<5;i++){
+      var k=(i-2);
+      var tail=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0,0.05,-0.08),
+        new THREE.Vector3(k*0.05,0.10,-0.24),
+        new THREE.Vector3(k*0.10,0.20-Math.abs(k)*0.02,-0.40),
+        new THREE.Vector3(k*0.14,0.34-Math.abs(k)*0.05,-0.50)
+      ]),14,0.010,6,false), m);
+      g.add(tail);
+      var tip=new THREE.Mesh(new THREE.SphereGeometry(0.018,7,7), m);
+      tip.position.set(k*0.14,0.34-Math.abs(k)*0.05,-0.50); g.add(tip);
+    }
+    /* legs grip */
+    [-1,1].forEach(function(sx){
+      var leg=new THREE.Mesh(new THREE.CylinderGeometry(0.013,0.016,0.07,6), m);
+      leg.position.set(sx*0.035,0.005,0.05); g.add(leg);
+    });
+    g.scale.setScalar(1.25);
+    return g;
+  }
+  /* 瓔珞 v2: bead chains + diamond plates */
+  function buildYoraku(){
+    var g=new THREE.Group(), m=brightGold();
+    var bead=new THREE.SphereGeometry(0.02,7,7);
+    var plate=new THREE.OctahedronGeometry(0.036);
+    [[0.56,0.56],[-0.56,0.56],[0.56,-0.56],[-0.56,-0.56],[0,0.62],[0,-0.62],[0.62,0],[-0.62,0]].forEach(function(p){
+      for(var i=0;i<4;i++){
+        var b=new THREE.Mesh(bead,m);
+        b.position.set(p[0],-0.045-i*0.05,p[1]); g.add(b);
+      }
+      var d=new THREE.Mesh(plate,m);
+      d.scale.set(0.7,1,0.7); d.position.set(p[0],-0.29,p[1]); g.add(d);
+    });
+    return g;
+  }
+  /* 玉垣 */
+  function buildTamagaki(mat){
+    var g=new THREE.Group(), hx=0.6, hz=0.44;
+    function fence(side,n){
+      var span=(side<2)?hx:hz;
+      for(var i=0;i<n;i++){
+        var t=-span+(i/(n-1))*span*2;
+        var post=new THREE.Mesh(new THREE.CylinderGeometry(0.017,0.017,0.13,6), mat);
+        if(side===0) post.position.set(t,0,hz);
+        if(side===1) post.position.set(t,0,-hz);
+        if(side===2) post.position.set(hx,0,t);
+        if(side===3) post.position.set(-hx,0,t);
+        var knob=new THREE.Mesh(new THREE.SphereGeometry(0.022,6,6), mat);
+        knob.position.copy(post.position); knob.position.y=0.072;
+        g.add(post,knob);
+      }
+      var rail=new THREE.Mesh(new THREE.BoxGeometry(side<2?hx*2+0.05:0.03,0.026,side<2?0.03:hz*2+0.05), mat);
+      rail.position.set(side===2?hx:side===3?-hx:0, 0.045, side===0?hz:side===1?-hz:0);
+      g.add(rail);
+    }
+    fence(0,6); fence(1,6); fence(2,5); fence(3,5);
+    return g;
+  }
+  /* 房付き飾り紐: knot ball + skirt + fringe ring */
+  function buildTassel(ropeMat){
+    var g=new THREE.Group();
+    var knot=new THREE.Mesh(new THREE.SphereGeometry(0.055,9,9), ropeMat);
+    knot.scale.y=0.85; g.add(knot);
+    var neckR=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.045,0.05,8), ropeMat);
+    neckR.position.y=-0.06; g.add(neckR);
+    var skirt=new THREE.Mesh(new THREE.CylinderGeometry(0.048,0.075,0.2,10), ropeMat);
+    skirt.position.y=-0.185; g.add(skirt);
+    for(var i=0;i<7;i++){
+      var a=i/7*Math.PI*2;
+      var strand=new THREE.Mesh(new THREE.CylinderGeometry(0.007,0.005,0.09,4), ropeMat);
+      strand.position.set(Math.cos(a)*0.055,-0.325,Math.sin(a)*0.055);
+      g.add(strand);
+    }
+    var collar=new THREE.Mesh(new THREE.TorusGeometry(0.045,0.012,6,12), brightGold());
+    collar.rotation.x=Math.PI/2; collar.position.y=-0.033; g.add(collar);
+    return g;
+  }
+  function buildShachihoko(){
+    var g=new THREE.Group(), m=brightGold();
+    var body=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.32,8), m); body.rotation.x=Math.PI/2.4;
+    var tail=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.16,4), m); tail.position.set(0,0.15,-0.08); tail.rotation.x=-Math.PI/2.1;
+    g.add(body,tail); return g;
+  }
+  function buildDragonCoil(){
+    var pts=[];
+    for(var i=0;i<8;i++){
+      var t=i/7;
+      pts.push(new THREE.Vector3(Math.sin(t*Math.PI*3)*0.5, -0.55+t*0.98, Math.cos(t*Math.PI*3)*0.16+0.44));
+    }
+    return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),40,0.044,8,false),
+      new THREE.MeshStandardMaterial({ color:0x3a8b5a, metalness:0.6, roughness:0.3, envMap:ENVCUBE, envMapIntensity:0.9, emissive:0x0a2a1a, emissiveIntensity:0.45 }));
+  }
+  function buildBells(colorHex){
+    var g=new THREE.Group();
+    var m=new THREE.MeshStandardMaterial({ color:colorHex, metalness:0.92, roughness:0.2, envMap:ENVCUBE, envMapIntensity:1.2, emissive:0x222211, emissiveIntensity:0.3 });
+    [[0.64,-0.4,0.47],[-0.64,-0.4,0.47],[0.64,-0.4,-0.47],[-0.64,-0.4,-0.47]].forEach(function(p){
+      var bell=new THREE.Mesh(new THREE.SphereGeometry(0.06,9,9), m);
+      bell.position.set(p[0],p[1],p[2]); g.add(bell);
+    });
+    return g;
+  }
+  function buildFlags(){
+    var g=new THREE.Group();
+    var poleM=new THREE.MeshStandardMaterial({ color:0x5c3a21, roughness:0.8 });
+    var flagM=new THREE.MeshStandardMaterial({ map:makeCharTexture('祭'), side:THREE.DoubleSide, roughness:0.75 });
+    [[-0.52,-0.52],[0.52,-0.52]].forEach(function(p){
+      var pole=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,1.1,6), poleM); pole.position.set(p[0],0.38,p[1]);
+      var flag=new THREE.Mesh(new THREE.PlaneGeometry(0.27,0.35), flagM); flag.position.set(p[0]+0.15,0.66,p[1]);
+      g.add(pole,flag);
+    });
+    return g;
+  }
+  function buildPhoenixTail(){
+    var g=new THREE.Group();
+    var m=new THREE.MeshStandardMaterial({ color:0xff8c42, metalness:0.6, roughness:0.28, envMap:ENVCUBE, envMapIntensity:1.0, emissive:0x662200, emissiveIntensity:0.6 });
+    for(var i=0;i<5;i++){
+      var f=new THREE.Mesh(new THREE.ConeGeometry(0.046,0.52,6), m);
+      var ang=(i-2)*0.3;
+      f.position.set(Math.sin(ang)*0.23,0.52,-0.44);
+      f.rotation.z=-ang; f.rotation.x=-0.75;
+      g.add(f);
+    }
+    return g;
+  }
+
+  function makeMakuTexture(text, fiery){
+    var cv=makeCanvas(320,112), cx=cv.getContext('2d');
+    var g=cx.createLinearGradient(0,0,0,112);
+    if(fiery){ g.addColorStop(0,'#5a1408'); g.addColorStop(1,'#2a0a04'); }
+    else { g.addColorStop(0,'#221c44'); g.addColorStop(1,'#14102c'); }
+    cx.fillStyle=g; cx.fillRect(0,0,320,112);
+    if(fiery){
+      cx.fillStyle='rgba(255,120,50,.5)';
+      for(var i=0;i<9;i++){ cx.beginPath(); cx.arc(20+i*36,112,14+(i%3)*7,Math.PI,0); cx.fill(); }
+    }
+    cx.strokeStyle='#d8b04a'; cx.lineWidth=6; cx.strokeRect(6,6,308,100);
+    cx.strokeStyle='rgba(224,190,90,.5)'; cx.lineWidth=1.5; cx.strokeRect(14,14,292,84);
+    cx.fillStyle= fiery ? '#ffd766' : '#f1cf6b';
+    cx.font='bold 46px "Hiragino Mincho ProN","Yu Mincho",serif';
+    cx.textAlign='center'; cx.textBaseline='middle';
+    cx.fillText(text, 160, 58);
+    return srgb(new THREE.CanvasTexture(cv));
+  }
+
+  /* ================= 3D v6: MIKOSHI ASSEMBLY ================= */
+  function buildMikoshi(opts){
+    opts=opts||{};
+    var v=MIKOSHI_VARIANTS[opts.variant||'classic']||MIKOSHI_VARIANTS.classic;
+    var accent=opts.accentHex!==undefined?opts.accentHex:0xd83a20;
+    var accentEmissive=opts.accentEmissiveHex!==undefined?opts.accentEmissiveHex:0xff5a36;
+    var root=new THREE.Group(); root.name='mikoshiRoot';
+    var gold=goldMaterial(), bg=brightGold(), black=lacquerBlack(), red=lacquerRed();
+    var roofMat, bodyMat;
+    if(opts.variant==='shiro'){
+      roofMat=new THREE.MeshStandardMaterial({ color:0xb03424, metalness:0.45, roughness:0.3, envMap:ENVCUBE, envMapIntensity:0.8, emissive:0x2a0804, emissiveIntensity:0.25 });
+      bodyMat=new THREE.MeshStandardMaterial({ color:0xece2c8, metalness:0.12, roughness:0.55, envMap:ENVCUBE, envMapIntensity:0.4 });
+    } else if(opts.variant==='kuro'){
+      roofMat=black; bodyMat=black;
+    } else {
+      roofMat=black; bodyMat=latticeGold();
+    }
+
+    /* --- 担ぎ棒 (black-lacquer twin poles, gold caps, white rope lashings) --- */
+    var poleG=new THREE.CylinderGeometry(0.052,0.052,3.3,10); poleG.rotateZ(Math.PI/2);
+    var ropeWhite=new THREE.MeshStandardMaterial({ color:0xece4d0, roughness:0.85 });
+    [0.4,-0.4].forEach(function(z){
+      var pole=new THREE.Mesh(poleG, black); pole.position.set(0,-0.94,z); root.add(pole);
+      [-1.63,1.63].forEach(function(x){
+        var cap=new THREE.Mesh(new THREE.CylinderGeometry(0.058,0.058,0.09,10), bg);
+        cap.rotation.z=Math.PI/2; cap.position.set(x,-0.94,z); root.add(cap);
+        var tip=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), bg);
+        tip.position.set(x>0?x+0.05:x-0.05,-0.94,z); root.add(tip);
+      });
+      [-0.72,0.72].forEach(function(x){
+        for(var i=0;i<3;i++){
+          var wrap=new THREE.Mesh(new THREE.TorusGeometry(0.062,0.014,6,12), ropeWhite);
+          wrap.rotation.y=Math.PI/2; wrap.position.set(x+(i-1)*0.035,-0.94,z); root.add(wrap);
+        }
+      });
+    });
+    /* cross ties */
+    [[-0.72],[0.72]].forEach(function(p){
+      var tie=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.055,0.92), black);
+      tie.position.set(p[0],-0.885,0); root.add(tie);
+    });
+
+    /* --- 台輪 (two-tier lacquer base w/ gold banding + studs) --- */
+    var b1=new THREE.Mesh(new THREE.BoxGeometry(1.52,0.17,1.16), black); b1.position.y=-0.77; root.add(b1);
+    var band1=new THREE.Mesh(new THREE.BoxGeometry(1.58,0.045,1.22), gold); band1.position.y=-0.675; root.add(band1);
+    var b2=new THREE.Mesh(new THREE.BoxGeometry(1.36,0.12,1.02), red); b2.position.y=-0.595; root.add(b2);
+    var band2=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.035,1.06), gold); band2.position.y=-0.53; root.add(band2);
+    /* 金鋲 studs on base front/back */
+    var stud=new THREE.SphereGeometry(0.021,6,6);
+    for(var si=0;si<6;si++){
+      var sx=-0.62+si*0.25;
+      [[0.585,-0.77],[-0.585,-0.77]].forEach(function(pz){
+        var s=new THREE.Mesh(stud,bg); s.position.set(sx,pz[1],pz[0]); root.add(s);
+      });
+    }
+    /* corner hardware */
+    [[0.74,0.56],[-0.74,0.56],[0.74,-0.56],[-0.74,-0.56]].forEach(function(p){
+      var cnr=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.19,0.09), bg);
+      cnr.position.set(p[0],-0.77,p[1]); root.add(cnr);
+    });
+
+    /* --- 玉垣 --- */
+    var fence=buildTamagaki(gold); fence.position.y=-0.47; root.add(fence);
+
+    /* --- 胴 (shrine body) --- */
+    var body=new THREE.Mesh(new THREE.BoxGeometry(0.82,0.64,0.68), bodyMat); body.position.y=-0.15; root.add(body);
+    /* 長押 bands */
+    var nage1=new THREE.Mesh(new THREE.BoxGeometry(0.88,0.05,0.74), gold); nage1.position.y=0.12; root.add(nage1);
+    var nage2=new THREE.Mesh(new THREE.BoxGeometry(0.88,0.05,0.74), gold); nage2.position.y=-0.44; root.add(nage2);
+    /* corner pillars */
+    [[0.43,0.36],[-0.43,0.36],[0.43,-0.36],[-0.43,-0.36]].forEach(function(p){
+      var pil=new THREE.Mesh(new THREE.CylinderGeometry(0.042,0.042,0.66,10), gold);
+      pil.position.set(p[0],-0.15,p[1]); root.add(pil);
+      var pcap=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), bg);
+      pcap.position.set(p[0],0.19,p[1]); root.add(pcap);
+    });
+    /* gilded doors on 4 faces */
+    var doorTex=makeDoorTexture();
+    var doorMat=new THREE.MeshStandardMaterial({ map:doorTex, metalness:0.85, roughness:0.32, envMap:ENVCUBE, envMapIntensity:1.0, emissive:0x1c1202, emissiveIntensity:0.25 });
+    [[0,0.349,0],[0,-0.349,Math.PI],[0.419,0,Math.PI/2],[-0.419,0,-Math.PI/2]].forEach(function(d){
+      var door=new THREE.Mesh(new THREE.PlaneGeometry(0.4,0.48), doorMat);
+      if(d[2]===0){ door.position.set(0,-0.17,d[1]); }
+      else if(Math.abs(d[2])===Math.PI){ door.position.set(0,-0.17,d[1]); }
+      else { door.position.set(d[0],-0.17,0); }
+      door.rotation.y=d[2];
+      root.add(door);
+    });
+    /* mini vermillion torii on front step */
+    var mtorii=new THREE.Group();
+    [-0.13,0.13].forEach(function(x){
+      var c=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.017,0.2,6), red);
+      c.position.set(x,0.1,0); mtorii.add(c);
+    });
+    var kasa=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.022,0.03), black); kasa.position.y=0.2; mtorii.add(kasa);
+    var nuki=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.018,0.026), red); nuki.position.y=0.145; mtorii.add(nuki);
+    mtorii.position.set(0,-0.535,0.47); root.add(mtorii);
+
+    /* --- 屋根 (deep black-lacquer roof, gold trims, medallions, brackets) --- */
+    var masugumi=buildMasugumi(0.5,0.4,0.16,gold); root.add(masugumi);
+    var eave=new THREE.Mesh(new THREE.BoxGeometry(1.66,0.06,1.34), black); eave.position.y=0.22; root.add(eave);
+    var eaveTrim=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.028,1.38), bg); eaveTrim.position.y=0.258; root.add(eaveTrim);
+    root.add(buildEaveMedallions(0.845,0.685,0.22,bg));
+    var roof=buildCurvedRoof(roofMat); roof.position.y=0.24; roof.scale.set(1.0,0.95,0.8); root.add(roof);
+    /* gold ridge line accents on the 4 hips */
+    for(var hi=0;hi<4;hi++){
+      var a2=Math.PI/4+hi*Math.PI/2;
+      var hip=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0,0.795,0),
+        new THREE.Vector3(Math.cos(a2)*0.67,0.58,Math.sin(a2)*0.54),
+        new THREE.Vector3(Math.cos(a2)*1.22,0.36,Math.sin(a2)*0.976)
+      ]),10,0.018,6,false), gold);
+      root.add(hip);
+    }
+    [[0.83,0.66],[-0.83,0.66],[0.83,-0.66],[-0.83,-0.66]].forEach(function(p){
+      var wb=buildWarabite(bg); wb.position.set(p[0],0.345,p[1]);
+      wb.rotation.y=Math.atan2(p[1],p[0])+Math.PI/2; root.add(wb);
+    });
+    /* 箱棟 + 露盤 + 鳳凰 */
+    var hakomune=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.09,0.26), black); hakomune.position.y=0.795; root.add(hakomune);
+    var hakoTrim=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.026,0.3), bg); hakoTrim.position.y=0.845; root.add(hakoTrim);
+    var roban=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.115,0.09,10), gold); roban.position.y=0.9; root.add(roban);
+    var finialSlot=new THREE.Group(); finialSlot.name='finialSlot'; finialSlot.position.y=0.945;
+    finialSlot.add(buildPhoenix());
+    root.add(finialSlot);
+
+    /* --- 飾り紐 (orange ropes from roof corners w/ tassels + gold bells) --- */
+    var ropeMat=new THREE.MeshStandardMaterial({ color:0xe0762a, roughness:0.6, envMap:ENVCUBE, envMapIntensity:0.35, emissive:0x30160a, emissiveIntensity:0.35 });
+    [[0.82,0.62],[-0.82,0.62],[0.82,-0.62],[-0.82,-0.62]].forEach(function(p){
+      var sx=p[0], sz=p[1];
+      var curve=new THREE.CatmullRomCurve3([
+        new THREE.Vector3(sx*1.0,0.3,sz*1.03),
+        new THREE.Vector3(sx*1.22,-0.18,sz*1.06),
+        new THREE.Vector3(sx*1.1,-0.52,sz*0.88)
+      ]);
+      root.add(new THREE.Mesh(new THREE.TubeGeometry(curve,14,0.03,7,false),ropeMat));
+      var tas=buildTassel(ropeMat);
+      tas.position.set(sx*1.1,-0.56,sz*0.88); root.add(tas);
+      var bell=new THREE.Mesh(new THREE.SphereGeometry(0.045,9,9),bg);
+      bell.position.set(sx*1.22,-0.24,sz*1.06); root.add(bell);
+    });
+
+    /* --- growth stages --- */
+    var extraSlot=new THREE.Group(); extraSlot.name='extraSlot'; root.add(extraSlot);
+    var lanternGroup=new THREE.Group(); lanternGroup.visible=false;
+    var lanternMeshes=[], lanternLights=[];
+    var chochinTex=(function(){
+      var cv=makeCanvas(64,64), cx=cv.getContext('2d');
+      var g2=cx.createLinearGradient(0,0,0,64);
+      g2.addColorStop(0,'#ff7a3a'); g2.addColorStop(0.5,'#ff9a50'); g2.addColorStop(1,'#e05a20');
+      cx.fillStyle=g2; cx.fillRect(0,0,64,64);
+      cx.strokeStyle='rgba(120,30,8,0.55)'; cx.lineWidth=2;
+      for(var i=1;i<6;i++){ cx.beginPath(); cx.moveTo(0,i*11); cx.lineTo(64,i*11); cx.stroke(); }
+      return srgb(new THREE.CanvasTexture(cv));
+    })();
+    [[1.3,0.4],[-1.3,0.4],[1.3,-0.4],[-1.3,-0.4]].forEach(function(p,i){
+      var lm=new THREE.MeshStandardMaterial({ map:chochinTex, color:accent, emissive:accentEmissive, emissiveIntensity:0.8, roughness:0.5 });
+      var l=new THREE.Mesh(new THREE.SphereGeometry(0.105,12,12), lm);
+      l.scale.y=1.28; l.position.set(p[0],-0.7,p[1]);
+      var capT=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.03,8), black); capT.position.set(p[0],-0.55,p[1]);
+      var capB=capT.clone(); capB.position.y=-0.85;
+      var armL=new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.016,0.58,6), black);
+      armL.rotation.z=Math.PI/2; armL.position.set(p[0]>0?p[0]-0.29:p[0]+0.29,-0.545,p[1]);
+      lanternGroup.add(l,capT,capB,armL);
+      lanternMeshes.push(l);
+      if(i<2){ var pl=new THREE.PointLight(accentEmissive,0.7,2.6); pl.position.set(p[0],-0.7,p[1]); lanternGroup.add(pl); lanternLights.push(pl); }
+    });
+    root.add(lanternGroup);
+    var curtainGroup=new THREE.Group(); curtainGroup.visible=false;
+    var curtainMat=new THREE.MeshStandardMaterial({ map:makeMakuTexture(opts.teamName||'チーム'), roughness:0.75, side:THREE.DoubleSide });
+    var curtain=new THREE.Mesh(new THREE.PlaneGeometry(1.18,0.4), curtainMat);
+    curtain.position.set(0,-0.34,0.58); curtainGroup.add(curtain);
+    var curtainB=new THREE.Mesh(new THREE.PlaneGeometry(1.18,0.4), curtainMat);
+    curtainB.rotation.y=Math.PI; curtainB.position.set(0,-0.34,-0.58); curtainGroup.add(curtainB);
+    root.add(curtainGroup);
+    var trimGroup=new THREE.Group(); trimGroup.visible=false;
+    var yo=buildYoraku(); yo.position.y=0.3; trimGroup.add(yo);
+    var dust=buildParticleSet({ count:26, radius:0.95, yMin:-0.4, yMax:0.85, speedMin:0.05, speedMax:0.14, color:0xf1cf6b, size:0.05, dir:1, opacity:0.7 });
+    trimGroup.add(dust);
+    root.add(trimGroup);
+    var flameGroup=new THREE.Group(); flameGroup.visible=false;
+    var flameParticles=buildParticleSet({ count:64, radius:0.55, yMin:-0.6, yMax:0.4, speedMin:0.35, speedMax:0.75, color:0xff7a3d, size:0.1, dir:1 });
+    flameParticles.position.y=-0.1;
+    flameGroup.add(flameParticles);
+    root.add(flameGroup);
+
+    root.traverse(function(o){
+      if(o.isMesh){
+        if(!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+        o.castShadow=!!(o.geometry.boundingSphere && o.geometry.boundingSphere.radius>0.09);
+      }
+    });
+    return {
+      root:root,
+      parts:{
+        lanternGroup:lanternGroup, lanternMeshes:lanternMeshes, lanternLights:lanternLights,
+        curtainGroup:curtainGroup, curtainMat:curtainMat, teamName:opts.teamName||'チーム',
+        trimGroup:trimGroup, flameGroup:flameGroup, flameParticles:flameParticles,
+        finialSlot:finialSlot, extraSlot:extraSlot
+      }
+    };
+  }
+  function levelScale(l){ return 1+(l||0)*0.09; }
+  function setMikoshiStage(parts, stage){
+    parts.lanternGroup.visible=stage>=1;
+    parts.curtainGroup.visible=stage>=2;
+    parts.trimGroup.visible=stage>=3;
+    parts.flameGroup.visible=stage>=4;
+    var glowI=0.35+stage*0.14;
+    parts.finialSlot.traverse(function(o){ if(o.material&&o.material.emissiveIntensity!==undefined) o.material.emissiveIntensity=glowI+0.2; });
+  }
+  function equipAvatarOnMikoshi(parts, avatar){
+    var t=avatar.effectType;
+    if(t==='shachihoko'){
+      [-0.64,0.64].forEach(function(x){
+        var s=buildShachihoko(); s.position.set(x,0.4,0); s.rotation.y=x>0?Math.PI/2:-Math.PI/2;
+        parts.extraSlot.add(s);
+      });
+    } else if(t==='dragon'){
+      parts.extraSlot.add(buildDragonCoil());
+    } else if(t==='rainbowLantern'){
+      parts.lanternMeshes.forEach(function(m){ m.userData.rainbow=true; });
+    } else if(t==='flameCurtain'){
+      parts.curtainMat.map=makeMakuTexture(parts.teamName, true);
+      parts.curtainMat.needsUpdate=true;
+    } else if(t==='tint'){
+      parts.lanternMeshes.forEach(function(m){ m.material.color.setHex(avatar.color); m.material.emissive.setHex(avatar.color); });
+      parts.lanternLights.forEach(function(l){ l.color.setHex(avatar.color); });
+    } else if(t==='bells'){
+      parts.extraSlot.add(buildBells(avatar.color||0xdddddd));
+    } else if(t==='flags'){
+      parts.extraSlot.add(buildFlags());
+    } else if(t==='phoenixTail'){
+      parts.extraSlot.add(buildPhoenixTail());
+    } else if(t==='sakura'){
+      parts.extraSlot.add(buildParticleSet({ count:44, radius:1.2, yMin:-0.85, yMax:1.35, speedMin:0.15, speedMax:0.35, color:0xffb7d5, size:0.08, dir:-1, opacity:0.9 }));
+    } else if(t==='phoenixFlame'){
+      parts.extraSlot.add(buildParticleSet({ count:50, radius:0.7, yMin:0.4, yMax:1.3, speedMin:0.25, speedMax:0.55, color:0xffd27a, size:0.09, dir:1 }));
+    } else if(t==='extraLanterns'){
+      var g=new THREE.Group();
+      [[0,-0.55,0.64],[0,-0.55,-0.64]].forEach(function(p){
+        var lm=new THREE.MeshStandardMaterial({ color:0xd83a20, emissive:0xff5a36, emissiveIntensity:0.9 });
+        var l=new THREE.Mesh(new THREE.SphereGeometry(0.1,10,10), lm); l.scale.y=1.3; l.position.set(p[0],p[1],p[2]);
+        var pl=new THREE.PointLight(0xff5a36,0.45,2); pl.position.copy(l.position);
+        g.add(l,pl);
+      });
+      parts.extraSlot.add(g);
+    }
+  }
+  function updateRainbowLanterns(parts, elapsedSec){
+    parts.lanternMeshes.forEach(function(m,i){
+      if(m.userData.rainbow){
+        var c=new THREE.Color(); c.setHSL((elapsedSec*0.15+i*0.12)%1,0.9,0.55);
+        m.material.color.copy(c); m.material.emissive.copy(c);
+        if(parts.lanternLights[i]) parts.lanternLights[i].color.copy(c);
+      }
+    });
+  }
+
+  /* ================= 3D v6: PLAYER AVATAR ================= */
+  function makeHappiTexture(baseHex){
+    var cv=makeCanvas(128,128), cx=cv.getContext('2d');
+    var c='#'+('000000'+baseHex.toString(16)).slice(-6);
+    cx.fillStyle=c; cx.fillRect(0,0,128,128);
+    cx.fillStyle='rgba(255,255,255,0.10)';
+    for(var i=0;i<7;i++) cx.fillRect(0,i*19,128,4);
+    cx.strokeStyle='rgba(0,0,0,0.22)'; cx.lineWidth=2;
+    for(i=0;i<7;i++){ cx.beginPath(); cx.moveTo(0,i*19+11); cx.lineTo(128,i*19+11); cx.stroke(); }
+    var t=srgb(new THREE.CanvasTexture(cv)); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+    return t;
+  }
+  function buildPlayerAvatar(){
+    var root=new THREE.Group();
+    var skin=new THREE.MeshStandardMaterial({ color:0xf2cba2, roughness:0.62, envMap:ENVCUBE, envMapIntensity:0.25 });
+    var happiMat=new THREE.MeshStandardMaterial({ color:0x2b4ea8, map:makeHappiTexture(0x2b4ea8), roughness:0.68, envMap:ENVCUBE, envMapIntensity:0.3 });
+    var obiMat=new THREE.MeshStandardMaterial({ color:0xf1e6cc, roughness:0.7, envMap:ENVCUBE, envMapIntensity:0.3 });
+    var whiteCloth=new THREE.MeshStandardMaterial({ color:0xf3ecda, roughness:0.75 });
+    var dark=new THREE.MeshStandardMaterial({ color:0x2a2432, roughness:0.85 });
+
+    /* head + hair + face */
+    var head=new THREE.Mesh(new THREE.SphereGeometry(0.165,18,18), skin); head.position.y=1.02; root.add(head);
+    var hair=new THREE.Mesh(new THREE.SphereGeometry(0.172,18,12,0,Math.PI*2,0,Math.PI/1.9), dark);
+    hair.position.y=1.045; root.add(hair);
+    var fringe=new THREE.Mesh(new THREE.SphereGeometry(0.168,12,8,Math.PI*0.25,Math.PI*0.5,Math.PI*0.42,Math.PI*0.2), dark);
+    fringe.position.y=1.035; fringe.rotation.y=Math.PI*0.25; root.add(fringe);
+    var eyeG=new THREE.SphereGeometry(0.02,8,8);
+    var eyeM=new THREE.MeshStandardMaterial({ color:0x1a1410, roughness:0.3 });
+    [-1,1].forEach(function(s){
+      var eye=new THREE.Mesh(eyeG, eyeM);
+      eye.scale.set(0.8,1.15,0.55); eye.position.set(s*0.062,1.035,0.148); root.add(eye);
+      var brow=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.012,0.012), dark);
+      brow.position.set(s*0.062,1.085,0.152); brow.rotation.z=s*0.18; root.add(brow);
+      var blush=new THREE.Mesh(new THREE.CircleGeometry(0.022,10),
+        new THREE.MeshStandardMaterial({ color:0xf09a7a, roughness:0.8 }));
+      blush.position.set(s*0.105,0.985,0.132); blush.rotation.y=s*0.45; root.add(blush);
+    });
+    var mouth=new THREE.Mesh(new THREE.TorusGeometry(0.028,0.008,6,10,Math.PI), eyeM);
+    mouth.position.set(0,0.968,0.152); mouth.rotation.z=Math.PI; root.add(mouth);
+
+    /* torso: happi coat + white V-collar + undershirt */
+    var torso=new THREE.Mesh(new THREE.CylinderGeometry(0.175,0.215,0.52,14), happiMat); torso.position.y=0.62; root.add(torso);
+    var chest=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.15,0.3,10), whiteCloth); chest.position.set(0,0.72,0.06); root.add(chest);
+    [-1,1].forEach(function(s){
+      var collar=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.34,0.02), whiteCloth);
+      collar.position.set(s*0.075,0.72,0.168); collar.rotation.z=s*0.32; collar.rotation.x=-0.06;
+      root.add(collar);
+    });
+    /* obi + back knot */
+    var obi=new THREE.Mesh(new THREE.CylinderGeometry(0.215,0.215,0.075,14), obiMat); obi.position.y=0.43; root.add(obi);
+    var knot=new THREE.Mesh(new THREE.BoxGeometry(0.11,0.06,0.05), obiMat); knot.position.set(0,0.43,-0.2); root.add(knot);
+    /* back crest disc */
+    var crest=new THREE.Mesh(new THREE.CircleGeometry(0.06,14),
+      new THREE.MeshStandardMaterial({ color:0xf1cf6b, metalness:0.6, roughness:0.4, emissive:0x2a1c04, emissiveIntensity:0.3 }));
+    crest.position.set(0,0.7,-0.196); crest.rotation.y=Math.PI; root.add(crest);
+
+    /* arms: happi sleeve + forearm + hand */
+    [-1,1].forEach(function(s){
+      var sleeve=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.062,0.24,10), happiMat);
+      sleeve.position.set(s*0.235,0.73,0); sleeve.rotation.z=s*0.55; root.add(sleeve);
+      var fore=new THREE.Mesh(new THREE.CylinderGeometry(0.042,0.038,0.22,8), skin);
+      fore.position.set(s*0.315,0.55,0.02); fore.rotation.z=s*0.42; root.add(fore);
+      var hand=new THREE.Mesh(new THREE.SphereGeometry(0.052,9,9), skin);
+      hand.position.set(s*0.355,0.45,0.03); root.add(hand);
+    });
+    /* legs: white momohiki + tabi + zori */
+    [-1,1].forEach(function(s){
+      var thigh=new THREE.Mesh(new THREE.CylinderGeometry(0.068,0.06,0.2,8), whiteCloth);
+      thigh.position.set(s*0.09,0.28,0); root.add(thigh);
+      var shin=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.05,0.18,8), whiteCloth);
+      shin.position.set(s*0.09,0.12,0); root.add(shin);
+      var tabi=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), whiteCloth);
+      tabi.scale.set(1,0.7,1.3); tabi.position.set(s*0.09,0.035,0.03); root.add(tabi);
+      var zori=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.022,0.17),
+        new THREE.MeshStandardMaterial({ color:0x8a5c2e, roughness:0.8 }));
+      zori.position.set(s*0.09,0.008,0.035); root.add(zori);
+    });
+
+    /* costume slots (interface preserved) */
+    var bandGroup=new THREE.Group(); bandGroup.visible=false;
+    var bandMat=new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.6 });
+    var band=new THREE.Mesh(new THREE.TorusGeometry(0.162,0.026,8,22), bandMat);
+    band.rotation.x=Math.PI/2*0.92; band.position.y=1.08; bandGroup.add(band);
+    var bandKnot=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.03,0.03), bandMat);
+    bandKnot.position.set(0,1.08,-0.165); bandGroup.add(bandKnot);
+    root.add(bandGroup);
+    var maskSlot=new THREE.Group(); maskSlot.position.set(0,1.06,0.14); root.add(maskSlot);
+    var handSlot=new THREE.Group(); handSlot.position.set(0.355,0.48,0.05); root.add(handSlot);
+    var backSlot=new THREE.Group(); backSlot.position.set(0,0.75,-0.19); root.add(backSlot);
+    var auraSlot=new THREE.Group(); root.add(auraSlot);
+    root.traverse(function(o){ if(o.isMesh) o.castShadow=true; });
+    root.position.y=-0.55;
+    return {root:root, parts:{happiMat:happiMat,obiMat:obiMat,bandGroup:bandGroup,bandMat:bandMat,band:band,maskSlot:maskSlot,handSlot:handSlot,backSlot:backSlot,auraSlot:auraSlot}};
+  }
+  function equipCostume(parts,item){
+    var t=item.effectType;
+    if(t==='happi'){ parts.happiMat.color.setHex(item.color); parts.happiMat.map=makeHappiTexture(item.color); parts.happiMat.needsUpdate=true; }
+    else if(t==='obi'){ parts.obiMat.color.setHex(item.color); parts.obiMat.metalness=0.85; parts.obiMat.roughness=0.3; parts.obiMat.needsUpdate=true; }
+    else if(t==='hachimaki'){ parts.bandGroup.visible=true; parts.bandMat.color.setHex(item.color||0xffffff); }
+    else if(t==='hachimakiRainbow'){ parts.bandGroup.visible=true; parts.band.userData.rainbow=true; }
+    else if(t==='fan'){
+      var fan=new THREE.Group();
+      var leaf=new THREE.Mesh(new THREE.CircleGeometry(0.15,12,0,Math.PI),
+        new THREE.MeshStandardMaterial({color:0xd83a20,side:THREE.DoubleSide,emissive:0x551005,emissiveIntensity:0.4,roughness:0.6}));
+      var sun=new THREE.Mesh(new THREE.CircleGeometry(0.05,12),
+        new THREE.MeshStandardMaterial({color:0xf6d878,side:THREE.DoubleSide,emissive:0x3a2a08,emissiveIntensity:0.5}));
+      sun.position.set(0,0.07,0.003); fan.add(leaf,sun);
+      fan.rotation.x=-0.4; parts.handSlot.add(fan);
+    }
+    else if(t==='staff'){
+      var g=new THREE.Group();
+      var pole=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,0.95,6),new THREE.MeshStandardMaterial({color:0x5c3a21,roughness:0.8}));
+      var lm=new THREE.MeshStandardMaterial({color:0xd83a20,emissive:0xff5a36,emissiveIntensity:1,roughness:0.5});
+      var lan=new THREE.Mesh(new THREE.SphereGeometry(0.085,10,10),lm); lan.scale.y=1.3; lan.position.y=0.52;
+      var pl=new THREE.PointLight(0xff5a36,0.7,2); pl.position.y=0.52;
+      g.add(pole,lan,pl); g.position.y=0.2; parts.handSlot.add(g);
+    }
+    else if(t==='mask'){
+      var mg=new THREE.Group(); var white=new THREE.MeshStandardMaterial({color:0xf6f1e4,roughness:0.45});
+      var redM=new THREE.MeshStandardMaterial({color:0xd83a20,roughness:0.5});
+      var face=new THREE.Mesh(new THREE.ConeGeometry(0.115,0.17,4),white); face.rotation.x=Math.PI/2; mg.add(face);
+      [-1,1].forEach(function(s){
+        var ear=new THREE.Mesh(new THREE.ConeGeometry(0.04,0.1,4),white); ear.position.set(s*0.085,0.11,-0.02); mg.add(ear);
+        var earIn=new THREE.Mesh(new THREE.ConeGeometry(0.02,0.05,4),redM); earIn.position.set(s*0.085,0.1,0.005); mg.add(earIn);
+        var whisk=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.008,0.008),redM); whisk.position.set(s*0.06,0.02,0.07); whisk.rotation.z=s*0.3; mg.add(whisk);
+      });
+      mg.position.z=0.06; mg.position.y=0.08; parts.maskSlot.add(mg);
+    }
+    else if(t==='haori'){
+      var cape=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.46,0.05),
+        new THREE.MeshStandardMaterial({color:item.color||0x8f1d12,emissive:item.emissive||0x300a04,emissiveIntensity:0.5,roughness:0.5,envMap:ENVCUBE,envMapIntensity:0.4}));
+      parts.backSlot.add(cape);
+    }
+    else if(t==='helm'){
+      var s2=buildShachihoko(); s2.scale.setScalar(0.8); s2.position.y=0.16; parts.maskSlot.add(s2);
+    }
+    else if(t==='aura'){
+      parts.auraSlot.add(buildParticleSet({count:40,radius:0.48,yMin:0.1,yMax:1.4,speedMin:0.2,speedMax:0.5,color:item.color,size:0.06,dir:item.dir||1,opacity:0.9}));
+    }
+  }
+  function updateRainbowBand(parts, sec){
+    if(parts.band&&parts.band.userData.rainbow){
+      var c=new THREE.Color(); c.setHSL((sec*0.2)%1,0.9,0.55); parts.bandMat.color.copy(c);
+    }
+  }
+
+  /* ================= 3D v6: SHRINE ENVIRONMENT ================= */
+  function makeSkyTexture(){
+    var cv=makeCanvas(64,256), cx=cv.getContext('2d');
+    var g=cx.createLinearGradient(0,0,0,256);
+    g.addColorStop(0,'#3a3272');
+    g.addColorStop(0.42,'#584a94');
+    g.addColorStop(0.62,'#8a6292');
+    g.addColorStop(0.74,'#d8845a');
+    g.addColorStop(0.82,'#f0a860');
+    g.addColorStop(0.88,'#6a4a48');
+    g.addColorStop(1,'#2c2136');
+    cx.fillStyle=g; cx.fillRect(0,0,64,256);
+    return srgb(new THREE.CanvasTexture(cv));
+  }
+  function makeGroundTexture(){
+    var cv=makeCanvas(512,512), cx=cv.getContext('2d');
+    cx.fillStyle='#57506b'; cx.fillRect(0,0,512,512);
+    /* ishidatami flagstones */
+    var S=64;
+    for(var r=0;r<8;r++){
+      for(var c=0;c<8;c++){
+        var off=(r%2)*S/2;
+        var x=c*S+off-S/2, y=r*S;
+        var l=0.32+Math.random()*0.14;
+        cx.fillStyle='hsl(258,'+(9+Math.random()*6)+'%,'+(l*100)+'%)';
+        cx.fillRect(x+3,y+3,S-6,S-6);
+        cx.fillStyle='rgba(255,240,210,0.05)';
+        cx.fillRect(x+3,y+3,S-6,6);
+      }
+    }
+    /* wear + speckle */
+    for(var j=0;j<300;j++){
+      cx.fillStyle='rgba(240,228,200,'+(0.02+Math.random()*0.05)+')';
+      cx.fillRect(Math.random()*512,Math.random()*512,2.5,2.5);
+    }
+    var t=srgb(new THREE.CanvasTexture(cv));
+    t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(4,4);
+    return t;
+  }
+  function makeShojiTexture(){
+    var cv=makeCanvas(256,128), cx=cv.getContext('2d');
+    cx.fillStyle='#241a2c'; cx.fillRect(0,0,256,128);
+    /* glowing shoji windows */
+    for(var i=0;i<4;i++){
+      var x=18+i*62;
+      var g=cx.createLinearGradient(x,30,x,108);
+      g.addColorStop(0,'#ffd890'); g.addColorStop(1,'#e09a50');
+      cx.fillStyle=g; cx.fillRect(x,30,44,78);
+      cx.strokeStyle='rgba(60,30,10,0.85)'; cx.lineWidth=3;
+      cx.strokeRect(x,30,44,78);
+      cx.beginPath(); cx.moveTo(x+22,30); cx.lineTo(x+22,108); cx.stroke();
+      cx.beginPath(); cx.moveTo(x,56); cx.lineTo(x+44,56); cx.stroke();
+      cx.beginPath(); cx.moveTo(x,82); cx.lineTo(x+44,82); cx.stroke();
+    }
+    return srgb(new THREE.CanvasTexture(cv));
+  }
+  function makeAwningTexture(){
+    var cv=makeCanvas(128,64), cx=cv.getContext('2d');
+    for(var i=0;i<8;i++){
+      cx.fillStyle=(i%2===0)?'#d83a20':'#f0e6d0';
+      cx.fillRect(i*16,0,16,64);
+    }
+    var t=srgb(new THREE.CanvasTexture(cv)); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+    return t;
+  }
+  function buildGarland(x1,z1,x2,z2,y,count,color){
+    var g=new THREE.Group();
+    var mid=new THREE.Vector3((x1+x2)/2, y-0.7, (z1+z2)/2);
+    var curve=new THREE.CatmullRomCurve3([new THREE.Vector3(x1,y,z1), mid, new THREE.Vector3(x2,y,z2)]);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,20,0.008,4,false), new THREE.MeshStandardMaterial({ color:0x0d0a14 })));
+    curve.getPoints(count-1).forEach(function(p){
+      var lm=new THREE.MeshStandardMaterial({ color:color, emissive:color, emissiveIntensity:1.0 });
+      var l=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), lm);
+      l.scale.y=1.25; l.position.copy(p); l.position.y-=0.09;
+      g.add(l);
+    });
+    return g;
+  }
+  function buildCrowd(n){
+    var g=new THREE.Group();
+    var happiColors=[0x2b4ea8,0xd83a20,0x2f8a5a,0x6a3fa0,0x1c1626,0xe0762a];
+    var skin=new THREE.MeshStandardMaterial({ color:0xd8ac82, roughness:0.85 });
+    for(var i=0;i<n;i++){
+      var person=new THREE.Group();
+      var m=new THREE.MeshStandardMaterial({ color:happiColors[i%happiColors.length], roughness:0.9 });
+      var body=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.14,0.5,7), m); body.position.y=0.25;
+      var head=new THREE.Mesh(new THREE.SphereGeometry(0.09,7,7), skin); head.position.y=0.58;
+      var bandC=new THREE.Mesh(new THREE.CylinderGeometry(0.092,0.092,0.03,7),
+        new THREE.MeshStandardMaterial({ color:0xf0e6d0, roughness:0.8 }));
+      bandC.position.y=0.615;
+      person.add(body,head,bandC);
+      var a=(i/n)*Math.PI*2+Math.random()*0.2, r=3.7+Math.random()*1.3;
+      person.position.set(Math.cos(a)*r, -1.05, Math.sin(a)*r*0.8-0.5);
+      person.userData.bobPhase=Math.random()*Math.PI*2;
+      person.userData.bobSpeed=3+Math.random()*3;
+      g.add(person);
+    }
+    return g;
+  }
+  function buildYatai(x,z,rotY){
+    var g=new THREE.Group();
+    var wood=new THREE.MeshStandardMaterial({ color:0x6a4526, roughness:0.85 });
+    var counter=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.75,0.75), wood); counter.position.y=0.37; g.add(counter);
+    var glowM=new THREE.MeshStandardMaterial({ color:0xffc878, emissive:0xffa850, emissiveIntensity:0.9 });
+    var inner=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.42,0.1), glowM); inner.position.set(0,0.92,-0.2); g.add(inner);
+    [-0.68,0.68].forEach(function(px){
+      var post=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.4,6), wood);
+      post.position.set(px,0.7,0.3); g.add(post);
+    });
+    var awn=new THREE.Mesh(new THREE.BoxGeometry(1.66,0.05,0.95),
+      new THREE.MeshStandardMaterial({ map:makeAwningTexture(), roughness:0.8 }));
+    awn.position.set(0,1.42,0.05); awn.rotation.x=0.16; g.add(awn);
+    var lan=new THREE.Mesh(new THREE.SphereGeometry(0.09,9,9),
+      new THREE.MeshStandardMaterial({ color:0xff7a3a, emissive:0xff7030, emissiveIntensity:1.1 }));
+    lan.scale.y=1.3; lan.position.set(0.6,1.1,0.42); g.add(lan);
+    var pl=new THREE.PointLight(0xffa050,0.8,3.4); pl.position.set(0,1.0,0.2); g.add(pl);
+    g.position.set(x,-1.05,z); g.rotation.y=rotY;
+    return g;
+  }
+  function buildShrineEnvironment(){
+    var env=new THREE.Group(); env.name='shrineEnv';
+    /* bright dusk sky dome */
+    var sky=new THREE.Mesh(new THREE.SphereGeometry(28,24,16),
+      new THREE.MeshBasicMaterial({ map:makeSkyTexture(), side:THREE.BackSide, fog:false }));
+    sky.position.y=2; env.add(sky);
+    /* stone pavement */
+    var ground=new THREE.Mesh(new THREE.CircleGeometry(16,40),
+      new THREE.MeshStandardMaterial({ map:makeGroundTexture(), roughness:0.95 }));
+    ground.rotation.x=-Math.PI/2; ground.position.y=-1.05; ground.receiveShadow=true; env.add(ground);
+
+    /* torii: vermillion with black kasagi, gakuzuka */
+    var red=new THREE.MeshStandardMaterial({ color:0xd8492c, roughness:0.5, envMap:ENVCUBE, envMapIntensity:0.5, emissive:0x2a0a04, emissiveIntensity:0.25 });
+    var blackWood=new THREE.MeshStandardMaterial({ color:0x1c1824, roughness:0.6, envMap:ENVCUBE, envMapIntensity:0.5 });
+    var torii=new THREE.Group();
+    var colL=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.22,3.7,12), red); colL.position.set(-2.0,0.75,0); colL.rotation.z=0.035;
+    var colR=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.22,3.7,12), red); colR.position.set(2.0,0.75,0); colR.rotation.z=-0.035;
+    var kasagi=new THREE.Mesh(new THREE.BoxGeometry(5.6,0.26,0.4), red); kasagi.position.set(0,2.56,0);
+    var shimaki=new THREE.Mesh(new THREE.BoxGeometry(5.9,0.16,0.48), blackWood); shimaki.position.set(0,2.77,0);
+    var nuki=new THREE.Mesh(new THREE.BoxGeometry(4.9,0.2,0.28), red); nuki.position.set(0,1.92,0);
+    var gaku=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.4,0.14), blackWood); gaku.position.set(0,2.24,0);
+    var gakuP=new THREE.Mesh(new THREE.PlaneGeometry(0.2,0.32),
+      new THREE.MeshStandardMaterial({ map:makeCharTexture('祭'), roughness:0.6 }));
+    gakuP.position.set(0,2.24,0.075);
+    [-2.0,2.0].forEach(function(x){
+      var daiwa=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.12,12), blackWood);
+      daiwa.position.set(x,2.36,0); torii.add(daiwa);
+      var base=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.3,0.24,12), blackWood);
+      base.position.set(x,-0.95,0); torii.add(base);
+    });
+    torii.add(colL,colR,kasagi,shimaki,nuki,gaku,gakuP);
+    torii.position.z=-4.2; env.add(torii);
+
+    /* stone lanterns */
+    function toro(x){
+      var g=new THREE.Group();
+      var stone=new THREE.MeshStandardMaterial({ color:0x9a97a6, roughness:0.95 });
+      var base=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.34,0.5,8), stone); base.position.y=-0.8;
+      var pillar=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.1,0.85,8), stone); pillar.position.y=-0.13;
+      var dai=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.16,0.1,8), stone); dai.position.y=0.32;
+      var house=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.32,0.4), stone); house.position.y=0.52;
+      var cap=new THREE.Mesh(new THREE.ConeGeometry(0.4,0.32,4), stone); cap.position.y=0.83; cap.rotation.y=Math.PI/4;
+      var hoju=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,8), stone); hoju.position.y=1.03;
+      var glow=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8), new THREE.MeshStandardMaterial({ color:0xffd27a, emissive:0xffa040, emissiveIntensity:1.4 }));
+      glow.position.y=0.52;
+      var light=new THREE.PointLight(0xffa050,1.15,5.5); light.position.y=0.52;
+      g.add(base,pillar,dai,house,cap,hoju,glow,light); g.position.set(x,0,-2.4);
+      return g;
+    }
+    env.add(toro(-2.8), toro(2.8));
+
+    /* shaden with glowing shoji + hip roof */
+    var hall=new THREE.Mesh(new THREE.BoxGeometry(5.4,2.2,2),
+      new THREE.MeshStandardMaterial({ map:makeShojiTexture(), roughness:0.9, emissive:0x604020, emissiveIntensity:0.4, emissiveMap:makeShojiTexture() }));
+    hall.position.set(0,0.1,-7.8); env.add(hall);
+    var roofS=new THREE.Mesh(new THREE.ConeGeometry(4.4,1.8,4), new THREE.MeshStandardMaterial({ color:0x241c30, roughness:0.9 }));
+    roofS.rotation.y=Math.PI/4; roofS.position.set(0,2.05,-7.8); env.add(roofS);
+    var ridge=new THREE.Mesh(new THREE.BoxGeometry(2.4,0.14,0.3),
+      new THREE.MeshStandardMaterial({ color:0xc9a23e, metalness:0.8, roughness:0.35, emissive:0x2a1c04, emissiveIntensity:0.3 }));
+    ridge.position.set(0,2.98,-7.8); env.add(ridge);
+    var hallGlow=new THREE.PointLight(0xffb060,0.85,7); hallGlow.position.set(0,0.6,-6.4); env.add(hallGlow);
+
+    /* yatai stalls flanking */
+    env.add(buildYatai(-4.6,-1.6, 0.5));
+    env.add(buildYatai(4.6,-1.6, -0.5));
+
+    /* lantern garlands */
+    env.add(buildGarland(-4.8,-3.0, 4.8,-3.0, 2.9, 11, 0xff6a3d));
+    env.add(buildGarland(-5.4, 1.6, 5.4, 1.6, 3.1, 12, 0xf1cf6b));
+    env.add(buildGarland(-5.8,-0.8, -3.4, 2.4, 2.6, 7, 0xff8a50));
+    env.add(buildGarland(5.8,-0.8, 3.4, 2.4, 2.6, 7, 0xff8a50));
+
+    var crowd=buildCrowd(26); crowd.name='crowd'; env.add(crowd);
+
+    /* moon + halo */
+    var moon=new THREE.Mesh(new THREE.CircleGeometry(1.1,28),
+      new THREE.MeshBasicMaterial({ color:0xf8efd4, fog:false }));
+    moon.position.set(4.6,7.4,-13); env.add(moon);
+    var haloCv=makeCanvas(64,64);
+    var hcx=haloCv.getContext('2d');
+    var hg=hcx.createRadialGradient(32,32,4,32,32,32);
+    hg.addColorStop(0,'rgba(248,238,210,0.85)'); hg.addColorStop(1,'rgba(248,238,210,0)');
+    hcx.fillStyle=hg; hcx.beginPath(); hcx.arc(32,32,32,0,Math.PI*2); hcx.fill();
+    var haloTex=new THREE.CanvasTexture(haloCv); haloTex.needsUpdate=true;
+    var halo=new THREE.Sprite(new THREE.SpriteMaterial({ map:haloTex, transparent:true, blending:THREE.AdditiveBlending, fog:false }));
+    halo.scale.set(5.2,5.2,1); halo.position.set(4.6,7.4,-12.9); env.add(halo);
+
+    /* stars */
+    var starCount=110, sp=new Float32Array(starCount*3);
+    for(var i=0;i<starCount;i++){
+      var a=Math.random()*Math.PI*2, r=7+Math.random()*10;
+      sp[i*3]=Math.cos(a)*r; sp[i*3+1]=4+Math.random()*8; sp[i*3+2]=Math.sin(a)*r-3;
+    }
+    var sg=new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp,3));
+    env.add(new THREE.Points(sg, new THREE.PointsMaterial({ color:0xdde4ff, size:0.07, transparent:true, opacity:0.85 })));
+    /* drifting embers */
+    env.add(buildParticleSet({ count:40, radius:7, yMin:-0.8, yMax:4.5, speedMin:0.1, speedMax:0.3, color:0xffb060, size:0.09, dir:1, opacity:0.6 }));
+    return env;
+  }
+
+  /* ================= 3D v6: RENDERER & LIGHTS ================= */
+  var threeReady=false, renderer=null, scene=null, camera=null, rafId=null;
+  var viewerParts=null, matchParts=null, matchPulse=0;
+
+  function initThree(){
+    if(threeReady) return true;
+    try{
+      if(typeof THREE==='undefined') return false;
+      renderer=new THREE.WebGLRenderer({ canvas:threeCanvas, antialias:true, alpha:true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+      if(THREE.ACESFilmicToneMapping!==undefined){
+        renderer.toneMapping=THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure=1.18;
+      }
+      if(THREE.sRGBEncoding!==undefined) renderer.outputEncoding=THREE.sRGBEncoding;
+      renderer.shadowMap.enabled=true;
+      renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+      ENVCUBE=buildEnvCube();
+      scene=new THREE.Scene();
+      camera=new THREE.PerspectiveCamera(50,1,0.1,100);
+      resizeThree();
+      window.addEventListener('resize', resizeThree);
+      threeReady=true;
+      return true;
+    }catch(e){ threeReady=false; return false; }
+  }
+  function resizeThree(){
+    if(!renderer||!camera) return;
+    var w=threeCanvas.clientWidth||window.innerWidth||1, h=threeCanvas.clientHeight||window.innerHeight||1;
+    renderer.setSize(w,h,false);
+    camera.aspect=w/h; camera.updateProjectionMatrix();
+  }
+  function setupLights(){
+    scene.add(new THREE.AmbientLight(0x8a7fc0,0.55));
+    scene.add(new THREE.HemisphereLight(0x8a7fd0,0x6a4530,0.9));
+    var key=new THREE.DirectionalLight(0xfff0d6,1.5); key.position.set(3.2,6,4.2);
+    key.castShadow=true;
+    key.shadow.mapSize.width=1024; key.shadow.mapSize.height=1024;
+    key.shadow.camera.left=-8; key.shadow.camera.right=8;
+    key.shadow.camera.top=8; key.shadow.camera.bottom=-8;
+    key.shadow.camera.near=0.5; key.shadow.camera.far=22;
+    key.shadow.bias=-0.002;
+    scene.add(key);
+    var rim=new THREE.DirectionalLight(0xffc76a,0.85); rim.position.set(-4,3,-3.4); scene.add(rim);
+    var fill=new THREE.DirectionalLight(0x9a8ae0,0.35); fill.position.set(0,2,6); scene.add(fill);
+  }
+
+  /* ================= BATTLE DIRECTOR v2 (validated: 3-clash) ================= */
+  function createBattleDirector(winnerSide){
+    var T_ENT=900, T_ORBIT=T_ENT+1200, C1_L=T_ORBIT+400, C1_B=C1_L+500,
+        C2_L=C1_B+350, C2_B=C2_L+500, F_L=C2_B+400, F_K=F_L+900, T_SET=F_K+1200;
+    var HITSTOP_SMALL=120, HITSTOP_BIG=220;
+    var clock=0, hitstop=0, pendingHits=0, nextImpact=0;
+    var impacts=[{t:C1_L,hs:HITSTOP_SMALL},{t:C2_L,hs:HITSTOP_SMALL},{t:F_L,hs:HITSTOP_BIG}];
+    var wp=winnerSide==='player';
+    var HOME=1.7, CLASH=0.45;
+
+    function step(dt){
+      if(hitstop>0){ hitstop-=dt; if(hitstop<0) hitstop=0; return; }
+      var prev=clock; clock+=dt;
+      if(nextImpact<impacts.length && prev<impacts[nextImpact].t && clock>=impacts[nextImpact].t){
+        clock=impacts[nextImpact].t; hitstop=impacts[nextImpact].hs; pendingHits++; nextImpact++;
+      }
+    }
+    function consumeHitEvent(){ if(pendingHits>0){ pendingHits--; return true; } return false; }
+    function shakeFrom(impactT, mag, halfLife){
+      if(clock<impactT) return 0;
+      return mag*Math.exp(-(clock-impactT)/halfLife);
+    }
+    function evaluate(){
+      var t=clock;
+      var out={ phase:'entrance', raceProgress:0,
+        playerX:-5.2, enemyX:5.2, playerY:0, enemyY:0,
+        cameraAngle:0, cameraRadius:6.0, cameraHeight:1.5, cameraLookX:0, cameraLookY:0.1,
+        playerScale:1, enemyScale:1, playerRotZ:0, enemyRotZ:0,
+        shake:0, hitstop:hitstop>0, done:clock>=T_SET && hitstop<=0 };
+      out.shake=shakeFrom(C1_L,0.13,140)+shakeFrom(C2_L,0.13,140)+shakeFrom(F_L,0.30,220);
+
+      if(t<=T_ENT){
+        var e=easeOutCubic(clamp01(t/T_ENT));
+        out.phase='entrance';
+        out.playerX=lerp(-5.2,-HOME,e); out.enemyX=lerp(5.2,HOME,e);
+        out.playerY=Math.abs(Math.sin(t/90))*0.05*(1-e);
+        out.enemyY=Math.abs(Math.sin(t/90+1))*0.05*(1-e);
+        return out;
+      }
+      out.playerX=-HOME; out.enemyX=HOME;
+
+      if(t<=T_ORBIT){
+        var e2=clamp01((t-T_ENT)/(T_ORBIT-T_ENT));
+        out.phase='orbit'; out.raceProgress=e2;
+        out.cameraAngle=lerp(0,Math.PI*0.55,easeInOutCubic(e2));
+        out.cameraRadius=lerp(6.0,5.2,e2);
+        return out;
+      }
+      out.raceProgress=1; out.cameraAngle=Math.PI*0.55; out.cameraRadius=5.2;
+
+      function clashSegment(lungeStart, impactT, bounceEnd, phL, phB){
+        if(t<=impactT){
+          var eL=easeInCubic(clamp01((t-lungeStart)/(impactT-lungeStart)));
+          out.phase=phL;
+          out.playerX=lerp(-HOME,-CLASH,eL); out.enemyX=lerp(HOME,CLASH,eL);
+          out.playerRotZ=lerp(0,-0.14,eL); out.enemyRotZ=lerp(0,0.14,eL);
+          return true;
+        }
+        if(hitstop>0){ out.phase='hitstop'; out.playerX=-CLASH; out.enemyX=CLASH; out.playerRotZ=-0.14; out.enemyRotZ=0.14; return true; }
+        if(t<=bounceEnd){
+          var eB=easeOutCubic(clamp01((t-impactT)/(bounceEnd-impactT)));
+          out.phase=phB;
+          out.playerX=lerp(-CLASH,-HOME,eB); out.enemyX=lerp(CLASH,HOME,eB);
+          out.playerRotZ=lerp(-0.14,0.06*Math.sin(eB*Math.PI*2),eB); out.enemyRotZ=lerp(0.14,-0.06*Math.sin(eB*Math.PI*2),eB);
+          return true;
+        }
+        return false;
+      }
+
+      if(t<=C1_B){ if(clashSegment(T_ORBIT,C1_L,C1_B,'clash1','bounce1')){ out.cameraRadius=lerp(5.2,4.6,clamp01((t-T_ORBIT)/(C1_B-T_ORBIT))); return out; } }
+      if(t<=C2_B){ out.cameraRadius=4.6; if(clashSegment(C1_B,C2_L,C2_B,'clash2','bounce2')){ out.cameraRadius=lerp(4.6,4.0,clamp01((t-C1_B)/(C2_B-C1_B))); return out; } }
+
+      out.cameraRadius=4.0;
+      if(t<=F_L){
+        var eF=easeInCubic(clamp01((t-C2_B)/(F_L-C2_B)));
+        out.phase='finalLunge';
+        out.cameraRadius=lerp(4.0,3.2,eF);
+        if(wp){ out.playerX=lerp(-HOME,0.25,eF); out.playerRotZ=lerp(0,-0.2,eF); }
+        else { out.enemyX=lerp(HOME,-0.25,eF); out.enemyRotZ=lerp(0,0.2,eF); }
+        return out;
+      }
+      if(wp) out.playerX=0.25; else out.enemyX=-0.25;
+      out.cameraRadius=3.2;
+      if(hitstop>0){ out.phase='hitstop'; if(wp){ out.playerRotZ=-0.2; } else { out.enemyRotZ=0.2; } return out; }
+
+      if(t<=F_K){
+        var eK=easeOutCubic(clamp01((t-F_L)/(F_K-F_L)));
+        out.phase='knockback';
+        if(wp){
+          out.enemyX=HOME+lerp(0,5.5,eK); out.enemyY=Math.sin(eK*Math.PI)*1.4;
+          out.enemyRotZ=lerp(0,Math.PI*2.6,eK); out.enemyScale=lerp(1,0.62,eK);
+          out.playerScale=1+0.1*Math.sin(eK*Math.PI); out.playerRotZ=lerp(-0.2,0,eK);
+        } else {
+          out.playerX=-HOME-lerp(0,5.5,eK); out.playerY=Math.sin(eK*Math.PI)*1.4;
+          out.playerRotZ=lerp(0,-Math.PI*2.6,eK); out.playerScale=lerp(1,0.62,eK);
+          out.enemyScale=1+0.1*Math.sin(eK*Math.PI); out.enemyRotZ=lerp(0.2,0,eK);
+        }
+        return out;
+      }
+      if(wp){ out.enemyX=HOME+5.5; out.enemyRotZ=Math.PI*2.6; out.enemyScale=0.62; }
+      else { out.playerX=-HOME-5.5; out.playerRotZ=-Math.PI*2.6; out.playerScale=0.62; }
+
+      var eS=easeInOutCubic(clamp01((t-F_K)/(T_SET-F_K)));
+      out.phase='settle';
+      var winnerX=wp?out.playerX:out.enemyX;
+      out.cameraLookX=lerp(0,winnerX,eS); out.cameraLookY=lerp(0.1,0.3,eS);
+      out.cameraRadius=lerp(3.2,2.5,eS); out.cameraAngle=lerp(Math.PI*0.55,0.18,eS);
+      out.cameraHeight=lerp(1.5,1.0,eS);
+      if(wp){ out.playerScale=1+0.02*Math.sin(t/300); } else { out.enemyScale=1+0.02*Math.sin(t/300); }
+      return out;
+    }
+    return { step:step, evaluate:evaluate, consumeHitEvent:consumeHitEvent,
+      get clock(){ return clock; }, get isDone(){ return clock>=T_SET && hitstop<=0; }, TOTAL_MS:T_SET };
+  }
+
+  function clearScene(){ if(scene){ scene.clear(); scene.fog=null; } }
+  function stopSceneRendering(){
+    if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+    threeCanvas.classList.remove('show');
+    matchParts=null; viewerParts=null;
+  }
+  function applyEquippedAvatars(parts){
+    state.ownedAvatars.forEach(function(av){ if(state.equippedKeys[av.key]) equipAvatarOnMikoshi(parts, av); });
+  }
+
+  /* --- match live viewer (mikoshi updates with each tap) --- */
+  function enterMatchViewerMode(){
+    if(!threeReady) return;
+    clearScene(); setupLights();
+    var build=buildMikoshi({ teamName:state.teamName, variant:state.variant });
+    matchParts=build.parts;
+    setMikoshiStage(matchParts, state.mikoshiLevel||0);
+    build.root.position.set(0,0.35,0);
+    scene.add(build.root);
+    scene.add(makeContactShadow(2.6,0,-0.66,0));
+    camera.position.set(0,1.02,4.3);
+    threeCanvas.classList.add('show');
+    var start=performance.now(), last=start;
+    function frame(now){
+      var dt=(now-last)/1000; last=now;
+      var elapsed=(now-start)/1000;
+      build.root.rotation.y=elapsed*0.35;
+      build.root.rotation.z=Math.sin(elapsed*2.4)*0.018;
+      build.root.position.y=0.35+Math.sin(elapsed*4.8)*0.035;
+      matchPulse*=Math.pow(0.004, dt);
+      build.root.scale.setScalar(levelScale(state.mikoshiLevel)*(1+0.16*matchPulse));
+      camera.lookAt(0,0.5,0);
+      animateAllParticles(build.root, dt);
+      updateRainbowLanterns(matchParts, elapsed);
+      renderer.render(scene, camera);
+      rafId=requestAnimationFrame(frame);
+    }
+    rafId=requestAnimationFrame(frame);
+  }
+  function liveSyncStage(){
+    var res=computeBestWindow(state.roundEvents, WINDOW_MS);
+    var ratio=res.best/Math.max(1,state.teamSize);
+    var s= ratio>=0.85?4: ratio>=0.65?3: ratio>=0.45?2: ratio>=0.25?1:0;
+    return { stage:Math.max(s, state.mikoshiLevel||0), best:res.best };
+  }
+  function matchViewerTapFeedback(){
+    matchPulse=1;
+    var ls=liveSyncStage();
+    if(matchParts) setMikoshiStage(matchParts, ls.stage);
+    mikoshiLiveLabel.classList.remove('pop'); void mikoshiLiveLabel.offsetWidth; mikoshiLiveLabel.classList.add('pop');
+    mikoshiLiveLabel.textContent='⚡ 同時シンクロ '+ls.best+'人！';
+  }
+  function matchViewerRoundSettled(){
+    if(matchParts) setMikoshiStage(matchParts, state.mikoshiLevel||0);
+    mikoshiLiveLabel.textContent=STAGE_LABEL[state.mikoshiLevel||0];
+  }
+
+  /* --- battle mode: shrine grounds + 3-clash choreography + spark bursts --- */
+  function enterBattleMode(onDone){
+    if(!threeReady){ setTimeout(onDone,300); return; }
+    clearScene(); setupLights();
+    scene.fog=new THREE.Fog(0x4a3e78, 11.5, 27);
+    var envG=buildShrineEnvironment();
+    scene.add(envG);
+    var crowdG=envG.getObjectByName('crowd');
+
+    var pBuild=buildMikoshi({ teamName:state.teamName, variant:state.variant, accentHex:0xe2472d, accentEmissiveHex:0xff5a2d });
+    var eBuild=buildMikoshi({ teamName:state.enemyTeamName, variant:state.enemyVariant, accentHex:0x3d6bff, accentEmissiveHex:0x6a8bff });
+    setMikoshiStage(pBuild.parts, state.mikoshiLevel||0);
+    setMikoshiStage(eBuild.parts, state.enemyLevel||0);
+    var pLS=levelScale(state.mikoshiLevel), eLS=levelScale(state.enemyLevel);
+    scene.add(pBuild.root, eBuild.root);
+    camera.position.set(0,1.5,6.0); camera.lookAt(0,0.1,0);
+    threeCanvas.classList.add('show');
+
+    var director=createBattleDirector(state.battleWinnerSide);
+    battleVsBanner.innerHTML='<span style="color:var(--fuji);font-size:12px;letter-spacing:.2em;">'+TOUR_LABEL[state.tourRound||0]+'</span><br><b>'+escapeHtml(state.teamName)+'</b><span class="vs">対</span><b>'+escapeHtml(state.enemyTeamName)+'</b>';
+    battlePlayerName.textContent=state.teamName; battleEnemyName.textContent=state.enemyTeamName;
+    battlePlayerBar.style.width='0%'; battleEnemyBar.style.width='0%';
+    battleCenterMsg.textContent=''; battleCenterMsg.classList.remove('show');
+    battleContinueBtn.classList.remove('show');
+
+    var bursts=[]; var clashCount=0; var msgTimer=null;
+    function flashCenterMsg(text, holdMs){
+      battleCenterMsg.textContent=text;
+      battleCenterMsg.classList.remove('show'); void battleCenterMsg.offsetWidth; battleCenterMsg.classList.add('show');
+      clearTimeout(msgTimer);
+      if(holdMs) msgTimer=setTimeout(function(){ battleCenterMsg.classList.remove('show'); }, holdMs);
+    }
+
+    var last=performance.now();
+    function frame(now){
+      var dt=now-last; last=now;
+      director.step(dt);
+      var s=director.evaluate();
+      pBuild.root.position.set(s.playerX, s.playerY, 0);
+      eBuild.root.position.set(s.enemyX, s.enemyY, 0);
+      pBuild.root.rotation.z=s.playerRotZ; eBuild.root.rotation.z=s.enemyRotZ;
+      pBuild.root.scale.setScalar(s.playerScale*pLS); eBuild.root.scale.setScalar(s.enemyScale*eLS);
+      var camX=Math.sin(s.cameraAngle)*s.cameraRadius, camZ=Math.cos(s.cameraAngle)*s.cameraRadius;
+      camera.position.set(camX+(Math.random()-0.5)*s.shake, s.cameraHeight+(Math.random()-0.5)*s.shake, camZ);
+      camera.lookAt(s.cameraLookX, s.cameraLookY, 0);
+      battlePlayerBar.style.width=(s.raceProgress*Math.min(100, state.totalPower/(state.teamSize*ROUNDS)*100))+'%';
+      battleEnemyBar.style.width=(s.raceProgress*Math.min(100, state.enemyPower/(state.enemySize*ROUNDS)*100))+'%';
+
+      if(crowdG){
+        var tSec=now/1000;
+        for(var ci=0;ci<crowdG.children.length;ci++){
+          var cp=crowdG.children[ci];
+          cp.position.y=-1.05+Math.abs(Math.sin(tSec*cp.userData.bobSpeed+cp.userData.bobPhase))*0.06;
+        }
+      }
+      if(director.consumeHitEvent()){
+        playImpactFlash(); SFX.clash();
+        var b=spawnSparkBurst(0,0,0); scene.add(b); bursts.push(b);
+        flashCenterMsg(CLASH_LABEL[Math.min(clashCount,2)], clashCount<2 ? 700 : 0);
+        clashCount++;
+      }
+      for(var i=bursts.length-1;i>=0;i--){
+        if(!animateSparkBurst(bursts[i], dt)){ scene.remove(bursts[i]); bursts.splice(i,1); }
+      }
+      if(s.phase==='settle' && !battleContinueBtn.classList.contains('show')){
+        if(state.battleWinnerSide==='player'){
+          SFX.win();
+          var fwColors=[0xf1cf6b,0xff6a3d,0x5e8aff,0xff7ab8];
+          for(var fi=0;fi<4;fi++){
+            (function(idx){
+              setTimeout(function(){
+                if(!rafId) return;
+                var fb=spawnSparkBurst(-2.5+idx*1.7, 4.2+Math.random()*1.4, -6);
+                fb.material.color.setHex(fwColors[idx%4]);
+                fb.material.size=0.11;
+                fb.userData.burst.life=1400;
+                fb.userData.burst.vel.forEach(function(v){ v.multiplyScalar(1.7); v.y+=0.4; });
+                scene.add(fb); bursts.push(fb);
+                SFX.doon();
+              }, idx*380);
+            })(fi);
+          }
+        } else { SFX.lose(); }
+        flashCenterMsg(state.battleWinnerSide==='player' ? (state.teamName+'　勝利！') : (state.enemyTeamName+'の勝利…'), 0);
+        battleContinueBtn.classList.add('show');
+      }
+      animateAllParticles(pBuild.root, dt/1000);
+      animateAllParticles(eBuild.root, dt/1000);
+      updateRainbowLanterns(pBuild.parts, now/1000);
+      renderer.render(scene, camera);
+      rafId=requestAnimationFrame(frame);
+    }
+    rafId=requestAnimationFrame(frame);
+    battleContinueBtn.onclick=function(){ stopSceneRendering(); onDone(); };
+  }
+
+  /* --- equip viewer (player avatar) --- */
+  function enterViewerMode(){
+    if(!threeReady) return;
+    if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+    clearScene(); setupLights();
+    var av=buildPlayerAvatar();
+    viewerParts=av.parts;
+    state.ownedAvatars.forEach(function(it){ if(state.equippedKeys[it.key]) equipCostume(viewerParts,it); });
+    scene.add(av.root);
+    scene.add(makeContactShadow(1.7,0,-0.56,0));
+    scene.add(buildParticleSet({ count:30, radius:1.6, yMin:-0.8, yMax:1.4, speedMin:0.04, speedMax:0.12, color:0xd0a83c, size:0.045, dir:1, opacity:0.55 }));
+    camera.position.set(0,0.62,2.65);
+    threeCanvas.classList.add('show');
+    var start=performance.now(), last=start;
+    function frame(now){
+      var dt=(now-last)/1000; last=now;
+      var elapsed=(now-start)/1000;
+      av.root.rotation.y=elapsed*0.5;
+      av.root.position.y=-0.55+Math.abs(Math.sin(elapsed*2.6))*0.03;
+      camera.lookAt(0,0.2,0);
+      animateAllParticles(scene, dt);
+      updateRainbowBand(viewerParts, elapsed);
+      renderer.render(scene, camera);
+      rafId=requestAnimationFrame(frame);
+    }
+    rafId=requestAnimationFrame(frame);
+  }
+
+  /* ================= AD ================= */
+  function drawAdFrame(ctx, w, h, sponsor, tSec){
+    ctx.clearRect(0,0,w,h);
+    var grad=ctx.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0,sponsor.bgTop); grad.addColorStop(1,sponsor.bgBottom);
+    ctx.fillStyle=grad; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle=sponsor.vesselColor;
+    if(sponsor.shape==='bottle'){
+      ctx.fillRect(w*0.38,h*0.30,w*0.24,h*0.5);
+      ctx.fillRect(w*0.45,h*0.18,w*0.1,h*0.14);
+    } else {
+      ctx.fillRect(w*0.32,h*0.35,w*0.36,h*0.45);
+      ctx.beginPath(); ctx.ellipse(w*0.5,h*0.35,w*0.18,h*0.05,0,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle=sponsor.vesselColor; ctx.lineWidth=10;
+      ctx.beginPath(); ctx.arc(w*0.72,h*0.55,w*0.08,-Math.PI/2,Math.PI/2); ctx.stroke();
+    }
+    sponsor.bubbles.forEach(function(b){
+      var y=h-((tSec*60+b.offset)%(h*0.8));
+      ctx.beginPath(); ctx.arc(w*b.x,y,b.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
+    });
+    ctx.fillStyle='#fff'; ctx.font='bold 22px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(sponsor.name, w/2, h*0.14);
+    ctx.font='12px sans-serif'; ctx.fillText(sponsor.tagline, w/2, h*0.90);
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(w-46,8,38,20);
+    ctx.fillStyle='#fff'; ctx.font='bold 12px sans-serif'; ctx.fillText('AD', w-27, 22);
+  }
+  function startAdScreen(sponsor, eyebrowText, onComplete){
+    showScreen('screen-ad');
+    adEyebrow.textContent=eyebrowText||'広告視聴';
+    var ctx=adCanvas.getContext('2d');
+    var startTime=performance.now(), duration=15000, completed=false, rafHandle;
+    adSkipBtn.classList.add('hidden'); adRewardFlash.classList.remove('show');
+    adProgressFill.style.transition='none'; adProgressFill.style.width='0%';
+    void adProgressFill.offsetWidth;
+    adProgressFill.style.transition='width '+duration+'ms linear';
+    adProgressFill.style.width='100%';
+    function frame(now){
+      var elapsed=now-startTime;
+      drawAdFrame(ctx, adCanvas.width, adCanvas.height, sponsor, elapsed/1000);
+      if(elapsed>=5000) adSkipBtn.classList.remove('hidden');
+      if(elapsed>=duration && !completed){ complete(); return; }
+      rafHandle=requestAnimationFrame(frame);
+    }
+    function complete(){
+      if(completed) return; completed=true;
+      cancelAnimationFrame(rafHandle);
+      adRewardFlash.classList.add('show');
+      setTimeout(onComplete, 700);
+    }
+    adSkipBtn.onclick=function(){ complete(); };
+    rafHandle=requestAnimationFrame(frame);
+  }
+
+  /* ================= QR ================= */
+  function buildQrGrid(){
+    qrGrid.innerHTML='';
+    var N=17;
+    function finder(r,c){ return (r<5&&c<5)||(r<5&&c>=N-5)||(r>=N-5&&c<5); }
+    for(var r=0;r<N;r++){
+      for(var c=0;c<N;c++){
+        var cell=document.createElement('div'); cell.className='qr-cell';
+        var on;
+        if(finder(r,c)){
+          var ir=r<5?r:r-(N-5), ic=c<5?c:c-(N-5);
+          on=(ir===0||ir===4||ic===0||ic===4||(ir===2&&ic===2));
+        } else { on=Math.random()<0.42; }
+        if(on) cell.classList.add('on');
+        qrGrid.appendChild(cell);
+      }
+    }
+  }
+  function runQrSequence(){
+    showScreen('screen-qr');
+    buildQrGrid();
+    qrCaption.textContent='店舗のQRコードを読み取り中…';
+    storeReveal.classList.remove('show');
+    var done=false;
+    function proceed(){ if(done) return; done=true; NET.send({t:'listTeams'}); showScreen('screen-teamselect'); }
+    qrSkipBtn.onclick=proceed;
+    setTimeout(function(){
+      qrCaption.textContent='読み取り完了！';
+      storeReveal.classList.add('show');
+      setTimeout(proceed, 900);
+    }, 1300);
+  }
+
+  /* ================= NET (WebSocket) ================= */
+  function catalogByKey(k){ for(var i=0;i<AVATAR_CATALOG.length;i++) if(AVATAR_CATALOG[i].key===k) return AVATAR_CATALOG[i]; return AVATAR_CATALOG[0]; }
+  function judgementByKey(k){ for(var i=0;i<JUDGEMENTS.length;i++) if(JUDGEMENTS[i].key===k) return JUDGEMENTS[i]; return JUDGEMENTS[JUDGEMENTS.length-1]; }
+  var NET=(function(){
+    var ws=null, offset=0, samples=[], connected=false, backoff=800, handlers={};
+    function serverNow(){ return Date.now()+offset; }
+    function send(obj){ if(ws && ws.readyState===1){ try{ ws.send(JSON.stringify(obj)); }catch(e){} } }
+    function on(t,fn){ handlers[t]=fn; }
+    function setPill(txt, ok){ var p=$('connPill'); if(!p) return; p.textContent=txt; p.className='conn-pill'+(ok?' ok':''); }
+    function syncClock(){ send({t:'ping', c:Date.now()}); }
+    function connect(onOpen){
+      var proto=location.protocol==='https:'?'wss://':'ws://';
+      try{ ws=new WebSocket(proto+location.host+'/ws'); }catch(e){ setPill('接続エラー', false); return; }
+      ws.onopen=function(){
+        connected=true; backoff=800; setPill('オンライン', true);
+        samples=[]; syncClock();
+        if(state.token && !state.awaitingWelcome) send({t:'register', token:state.token});
+        if(onOpen) onOpen();
+      };
+      ws.onmessage=function(ev){
+        var msg; try{ msg=JSON.parse(ev.data); }catch(e){ return; }
+        if(msg.t==='pong'){
+          var t1=Date.now(), rtt=t1-msg.c;
+          samples.push(msg.s + rtt/2 - t1);
+          if(samples.length<5){ setTimeout(syncClock, 120); }
+          else{ var so=samples.slice().sort(function(a,b){ return a-b; }); offset=so[Math.floor(so.length/2)]; }
+          return;
+        }
+        var h=handlers[msg.t]; if(h){ try{ h(msg); }catch(e){ console.error(msg.t, e); } }
+      };
+      ws.onclose=function(){
+        connected=false; setPill('再接続中…', false);
+        setTimeout(function(){ connect(); }, backoff);
+        backoff=Math.min(6000, Math.round(backoff*1.6));
+      };
+      ws.onerror=function(){ try{ ws.close(); }catch(e){} };
+    }
+    setInterval(function(){ if(connected){ samples=[]; syncClock(); } }, 45000);
+    return { connect:connect, send:send, on:on, serverNow:serverNow, isConnected:function(){ return connected; } };
+  })();
+
+  /* ================= TEAM SELECT (online) ================= */
+  function miniMikoshiSvg(variantKey){
+    var v=MIKOSHI_VARIANTS[variantKey]||MIKOSHI_VARIANTS.classic;
+    return '<svg class="team-mini-svg" viewBox="0 0 60 60">'+
+      '<ellipse cx="30" cy="52.5" rx="20" ry="2.8" fill="rgba(10,6,24,.4)"/>'+
+      '<circle cx="30" cy="6" r="2.6" fill="#f6d878"/>'+
+      '<path d="M30 8 C21 10 13 17 6 26 Q10 22.5 13.5 22.8 L30 19 L46.5 22.8 Q50 22.5 54 26 C47 17 39 10 30 8 Z" fill="'+v.svgRoof+'" stroke="#dcae48" stroke-width="1.2"/>'+
+      '<rect x="12" y="23.5" width="36" height="2.6" rx="1.3" fill="#e8c765"/>'+
+      '<rect x="18" y="27" width="24" height="17" rx="1.5" fill="'+v.svgBody+'" stroke="#a87e22" stroke-width="1"/>'+
+      '<line x1="24" y1="27" x2="24" y2="44" stroke="#7a5410" stroke-width=".8"/>'+
+      '<line x1="36" y1="27" x2="36" y2="44" stroke="#7a5410" stroke-width=".8"/>'+
+      '<rect x="26.5" y="30" width="7" height="11" fill="#e8c765" stroke="#7a5410" stroke-width=".8"/>'+
+      '<path d="M13 25 Q9 33 11 39" fill="none" stroke="#e0762a" stroke-width="1.6"/>'+
+      '<path d="M47 25 Q51 33 49 39" fill="none" stroke="#e0762a" stroke-width="1.6"/>'+
+      '<circle cx="11" cy="40.5" r="1.7" fill="#e0762a"/><circle cx="49" cy="40.5" r="1.7" fill="#e0762a"/>'+
+      '<rect x="7" y="46" width="46" height="3.2" rx="1.6" fill="#1e1838"/>'+
+      '<circle cx="7.5" cy="47.6" r="2" fill="#e8c765"/><circle cx="52.5" cy="47.6" r="2" fill="#e8c765"/>'+
+      '</svg>';
+  }
+  function buildTeamSelectScreen(){
+    teamGrid.innerHTML='';
+    var list=state.teamList||[];
+    list.forEach(function(team){
+      var card=document.createElement('button'); card.type='button';
+      card.className='team-card'+(state.selectedTeamId===team.id?' selected':'');
+      card.innerHTML=miniMikoshiSvg(team.variant)+
+        '<div class="team-card-info"><div class="team-card-name">'+escapeHtml(team.name)+'</div>'+
+        '<div class="team-card-meta">参加中 '+team.humans+'人・'+(MIKOSHI_VARIANTS[team.variant]||MIKOSHI_VARIANTS.classic).label+'の神輿・Lv'+((team.level||0)+1)+'</div></div>'+
+        '<span class="team-card-badge">参加する</span>';
+      card.onclick=function(){ state.selectedTeamId=team.id; state.selectedCreate=false; buildTeamSelectScreen(); };
+      teamGrid.appendChild(card);
+    });
+    if(list.length===0){
+      var empty=document.createElement('div');
+      empty.className='team-card'; empty.style.justifyContent='center';
+      empty.innerHTML='<div class="team-card-meta">いま募集中の連はありません。新しく旗揚げしましょう！</div>';
+      teamGrid.appendChild(empty);
+    }
+    var vkeys=Object.keys(MIKOSHI_VARIANTS);
+    var customCard=document.createElement('div');
+    customCard.className='team-card custom-team-card'+(state.selectedCreate?' selected':'');
+    customCard.innerHTML='<div class="team-card-info" style="width:100%;"><div class="team-card-name">新しい連を作る</div>'+
+      '<input type="text" id="customTeamInput" maxlength="10" placeholder="連の名前を入力">'+
+      '<div class="variant-row">'+vkeys.map(function(k){
+        return '<button type="button" class="variant-chip'+(state.customVariant===k?' sel':'')+'" data-v="'+k+'">'+MIKOSHI_VARIANTS[k].label+'</button>';
+      }).join('')+'</div>'+
+      '<div class="team-card-meta">仲間はあとから同じ連に参加できます（最大16人）</div></div>';
+    teamGrid.appendChild(customCard);
+    var customInput=$('customTeamInput');
+    customInput.value=state.customTeamName||'';
+    customInput.addEventListener('focus', function(){ state.selectedCreate=true; state.selectedTeamId=null; refreshTeamCards(); });
+    customInput.addEventListener('input', function(){ state.customTeamName=customInput.value; });
+    var chips=customCard.querySelectorAll('.variant-chip');
+    for(var i=0;i<chips.length;i++){
+      (function(btn){ btn.onclick=function(){
+        state.customVariant=btn.dataset.v; state.selectedCreate=true; state.selectedTeamId=null;
+        var focused=document.activeElement===customInput;
+        buildTeamSelectScreen();
+        if(focused){ var ci=$('customTeamInput'); if(ci) ci.focus(); }
+      }; })(chips[i]);
+    }
+  }
+  function refreshTeamCards(){
+    var cards=teamGrid.querySelectorAll('.team-card');
+    for(var i=0;i<cards.length;i++) cards[i].classList.remove('selected');
+    if(state.selectedCreate){ if(cards.length) cards[cards.length-1].classList.add('selected'); }
+    else{
+      var list=state.teamList||[];
+      for(var j=0;j<list.length;j++) if(list[j].id===state.selectedTeamId && cards[j]) cards[j].classList.add('selected');
+    }
+  }
+  function confirmTeamSelection(){
+    playImpactFlash();
+    if(state.selectedCreate || !state.selectedTeamId){
+      NET.send({ t:'createTeam', name:(state.customTeamName||'').trim(), variant:state.customVariant });
+    } else {
+      NET.send({ t:'joinTeam', id:state.selectedTeamId });
+    }
+  }
+
+  /* ---- ロビー（実プレイヤー） ---- */
+  function renderLobby(msg){
+    state.roomId=msg.roomId; state.teamName=msg.name; state.variant=msg.variant;
+    state.mikoshiLevel=msg.level||0; state.tourRound=msg.streak||0;
+    state.members=msg.members||[];
+    state.teamSize=state.members.length+(msg.botFill||0);
+    lobbyTeamName.textContent=msg.name;
+    lobbySize.textContent=state.members.length;
+    lobbySkill.textContent='Lv'+((msg.level||0)+1);
+    lobbyMemberRow.innerHTML='';
+    state.members.forEach(function(mb,i){
+      var d=document.createElement('div'); d.className='member-dot'; d.style.animationDelay=(i*0.05)+'s';
+      if(mb.ready) d.style.background='linear-gradient(160deg,#f1cf6b,#c98f2a)';
+      lobbyMemberRow.appendChild(d);
+    });
+    var feed=$('lobbyJoinFeed');
+    if(feed){
+      feed.innerHTML='';
+      state.members.forEach(function(mb){
+        var d=document.createElement('div');
+        d.textContent=(mb.ready?'✅ ':'🟢 ')+mb.name+(mb.pid===state.pid?'（あなた）':'')+(mb.ready?'：準備完了':'：参加中');
+        feed.appendChild(d);
+      });
+      if((msg.botFill||0)>0){
+        var d2=document.createElement('div'); d2.textContent='🤖 サポーター'+msg.botFill+'人が自動で加勢します';
+        feed.appendChild(d2);
+      }
+    }
+    var meReady=state.members.some(function(mb){ return mb.pid===state.pid && mb.ready; });
+    lobbyReadyBtn.disabled=meReady;
+    lobbyReadyBtn.textContent = meReady ? '仲間の準備を待っています…' : '準備完了（マッチング開始）';
+    var active=document.querySelector('.screen.active');
+    if(active && active.id==='screen-teamselect'){
+      showScreen('screen-lobby');
+      lobbyBonusToast.classList.remove('show');
+      setTimeout(function(){ lobbyBonusToast.classList.add('show'); }, 500);
+    }
+  }
+  function onSearching(){
+    lobbyReadyBtn.disabled=true;
+    lobbyReadyBtn.textContent='⚔ 対戦相手を探しています…';
+    var feed=$('lobbyJoinFeed');
+    if(feed){ var d=document.createElement('div'); d.style.color='#c3bde6'; d.textContent='⚔ 対戦相手を探しています…（見つからない時はライバル連が登場）'; feed.appendChild(d); }
+  }
+  function onMatched(msg){
+    state.enemyTeamName=msg.enemy.name; state.enemySize=msg.enemy.size;
+    state.enemyVariant=msg.enemy.variant||'classic'; state.enemyLevel=msg.enemy.level||0;
+    state.teamSize=msg.you.size; state.tourRound=msg.tour||0;
+    var feed=$('lobbyJoinFeed');
+    if(feed){ var d=document.createElement('div'); d.style.color='#f1cf6b'; d.textContent='🛰 マッチング成立！ vs '+msg.enemy.name; feed.appendChild(d); }
+    if(state.needAd){
+      state.needAd=false;
+      startAdScreen(AD_SPONSORS[Math.floor(Math.random()*AD_SPONSORS.length)], '試合前の広告視聴', enterArena);
+    } else {
+      enterArena();
+    }
+  }
+  function enterArena(){
+    state.playerContrib=0; state.totalPower=0; state.round=0; state.tappedPids={};
+    showScreen('screen-match');
+    buildAvatarGrid();
+    if(!state.advancing) mikoshiLiveLabel.textContent='あなたのお神輿';
+    state.advancing=false;
+    enterMatchViewerMode();
+    roundIndicatorEl.textContent=TOUR_LABEL[Math.min(state.tourRound||0,2)]+'｜まもなく開始';
+    updatePowerHeader();
+    countdownText.classList.add('show'); countdownText.textContent='全員の入場を待っています…';
+    NET.send({ t:'arena' });
+  }
+
+  /* ================= MATCH (SYNC TAP, server-driven) ================= */
+  var RING_R=45, RING_CIRC=2*Math.PI*RING_R;
+  ringFg.style.strokeDasharray=String(RING_CIRC);
+
+  function buildAvatarGrid(){
+    avatarGridEl.innerHTML='';
+    var members=state.members||[];
+    members.forEach(function(mb){
+      var d=document.createElement('div');
+      d.className='avatar-dot'+(mb.pid===state.pid?' is-player':'');
+      d.dataset.id=mb.pid; d.title=mb.name;
+      avatarGridEl.appendChild(d);
+    });
+    var bots=Math.max(0,(state.teamSize||8)-members.length);
+    for(var i=0;i<bots;i++){
+      var b=document.createElement('div'); b.className='avatar-dot'; b.dataset.id='b'+i;
+      avatarGridEl.appendChild(b);
+    }
+  }
+  function lightDot(id, timeMs){
+    state.tappedPids[id]=true;
+    var t=(typeof timeMs==='number') ? timeMs : Math.max(0, performance.now()-state.cuePerf);
+    if(t>=0 && t<=TAP_DURATION_MS) state.roundEvents.push({ id:id, time:t });
+    var dot=avatarGridEl.querySelector('[data-id="'+id+'"]');
+    if(dot) dot.classList.add('tapped');
+  }
+  function resetDotsForNewRound(){
+    state.tappedPids={}; state.roundEvents=[];
+    var dots=avatarGridEl.querySelectorAll('.avatar-dot');
+    for(var i=0;i<dots.length;i++) dots[i].classList.remove('tapped','synced','missed');
+  }
+  function updateRoundIndicator(){ roundIndicatorEl.textContent=TOUR_LABEL[Math.min(state.tourRound||0,2)]+'｜ラウンド '+state.round+' / '+ROUNDS; }
+  function updatePowerHeader(){ powerTotalEl.textContent='パワー: '+state.totalPower; }
+  function clearRoundTimers(){ state.roundTimers.forEach(function(t){ clearTimeout(t); }); state.roundTimers=[]; }
+
+  function scheduleRoundFromServer(msg){
+    clearRoundTimers();
+    hideRoundResult();
+    var active=document.querySelector('.screen.active');
+    if(!active || active.id!=='screen-match'){ showScreen('screen-match'); enterMatchViewerMode(); }
+    state.round=msg.r;
+    if(msg.teamSize && msg.teamSize!==state.teamSize){ state.teamSize=msg.teamSize; buildAvatarGrid(); }
+    if(avatarGridEl.children.length!==state.teamSize) buildAvatarGrid();
+    resetDotsForNewRound(); updateRoundIndicator(); updatePowerHeader();
+    state.playerTapped=false;
+    cueText.classList.remove('show'); tapTarget.classList.remove('pulsing');
+    playerTapInfo.classList.remove('show'); playerTapInfo.textContent='';
+    var cuePerf=performance.now()+(msg.cueAt-NET.serverNow());
+    state.cuePerf=cuePerf; state.phase='ready';
+    countdownText.classList.add('show'); countdownText.textContent='じゅんび中…';
+    function at(msBeforeCue, fn){
+      var d=cuePerf-performance.now()-msBeforeCue;
+      state.roundTimers.push(setTimeout(fn, Math.max(0,d)));
+    }
+    at(1800, function(){ state.phase='countdown'; countdownText.textContent='3'; SFX.tick(); });
+    at(1200, function(){ countdownText.textContent='2'; SFX.tick(); });
+    at(600,  function(){ countdownText.textContent='1'; SFX.tick(); });
+    at(0, function(){
+      state.phase='open';
+      countdownText.classList.remove('show');
+      cueText.textContent='せーの！'; SFX.doon();
+      cueText.classList.remove('show'); void cueText.offsetWidth; cueText.classList.add('show');
+      tapTarget.classList.add('pulsing');
+      ringFg.style.transition='none'; ringFg.style.strokeDashoffset='0';
+      void ringFg.offsetWidth;
+      ringFg.style.transition='stroke-dashoffset '+TAP_DURATION_MS+'ms linear';
+      ringFg.style.strokeDashoffset=String(RING_CIRC);
+    });
+    (msg.botTaps||[]).forEach(function(t,i){
+      if(t>=0) at(-t, function(){ lightDot('b'+i, t); matchViewerTapFeedback(); });
+    });
+    at(-TAP_DURATION_MS, function(){
+      if(state.phase==='open'){ state.phase='closed'; tapTarget.classList.remove('pulsing'); }
+    });
+  }
+
+  function spawnRipple(x,y){
+    var r=document.createElement('div'); r.className='tap-ripple';
+    r.style.left=x+'px'; r.style.top=y+'px';
+    document.body.appendChild(r);
+    setTimeout(function(){ r.remove(); }, 520);
+  }
+  tapZone.addEventListener('pointerdown', function(ev){
+    if(state.phase==='open'){
+      if(state.playerTapped) return;
+      var t=performance.now()-state.cuePerf;
+      if(t<0){ showFalseStartToast(); return; }
+      state.playerTapped=true;
+      spawnRipple(ev.clientX, ev.clientY);
+      if(t<=TAP_DURATION_MS){
+        NET.send({ t:'tap', r:state.round, at:Math.round(NET.serverNow()) });
+        lightDot(state.pid, t); SFX.don();
+        playerTapInfo.textContent='あなたのタップ: '+Math.round(t)+'ms';
+        playerTapInfo.classList.add('show');
+        tapTarget.classList.remove('pulsing');
+        matchViewerTapFeedback();
+      }
+    } else if(state.phase==='ready'||state.phase==='countdown'){
+      showFalseStartToast();
+    }
+  });
+  var toastTimer=null;
+  function showToast(text){
+    falseStartToast.textContent=text;
+    falseStartToast.classList.remove('hidden'); void falseStartToast.offsetWidth; falseStartToast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){
+      falseStartToast.classList.remove('show');
+      setTimeout(function(){ falseStartToast.classList.add('hidden'); }, 250);
+    }, 1400);
+  }
+  function showFalseStartToast(){ showToast('まだ早い！「せーの！」を待って'); }
+
+  function onRoundResult(msg){
+    clearRoundTimers();
+    state.phase='closed';
+    tapTarget.classList.remove('pulsing');
+    cueText.classList.remove('show');
+    state.totalPower=msg.power;
+    var contributed=msg.synced.indexOf(state.pid)>=0;
+    if(contributed) state.playerContrib=(state.playerContrib||0)+1;
+    matchViewerRoundSettled();
+    var syncedMap={}; msg.synced.forEach(function(id){ syncedMap[id]=true; });
+    var dots=avatarGridEl.querySelectorAll('.avatar-dot');
+    for(var i=0;i<dots.length;i++){
+      var id=dots[i].dataset.id;
+      if(syncedMap[id]) dots[i].classList.add('synced');
+      else if(!state.tappedPids[id]) dots[i].classList.add('missed');
+    }
+    showRoundResult({ best:msg.best, validCount:msg.validCount, pct:msg.pct,
+      judgement:judgementByKey(msg.judgement), contributed:contributed });
+  }
+  function burstConfetti(container){
+    for(var i=0;i<14;i++){
+      var p=document.createElement('span'); p.className='confetti-piece';
+      var angle=Math.random()*Math.PI*2, dist=40+Math.random()*70;
+      p.style.setProperty('--dx',(Math.cos(angle)*dist)+'px');
+      p.style.setProperty('--dy',(Math.sin(angle)*dist)+'px');
+      p.style.background=['#f4d35e','#e2472d','#ffd766','#f7ecd2'][i%4];
+      container.appendChild(p);
+      (function(el){ setTimeout(function(){ el.remove(); }, 950); })(p);
+    }
+  }
+  function showRoundResult(r){
+    judgeEmoji.textContent=r.judgement.emoji; judgeLabel.textContent=r.judgement.label;
+    judgementBadge.style.setProperty('--jcolor', r.judgement.color);
+    syncDetail.textContent = r.validCount>0
+      ? (r.validCount+'人中 '+r.best+'人が同じ0.1秒にシンクロ！（同期率'+Math.round(r.pct*100)+'%）')
+      : 'メンバーがタップできませんでした…';
+    powerGained.textContent='+'+r.best+' パワー獲得';
+    medalGained.textContent = r.contributed ? '⭐ あなたはシンクロ成功！勝てばコインボーナス！' : '';
+    nextRoundBtn.textContent = state.round<ROUNDS ? '次のラウンドへ' : '対戦へ進む';
+    roundResultOverlay.classList.remove('hidden'); void roundResultOverlay.offsetWidth; roundResultOverlay.classList.add('show');
+    updatePowerHeader();
+    if(r.judgement.key==='MIRACLE'||r.judgement.key==='PERFECT'){ burstConfetti(judgementBadge); SFX.win(); }
+  }
+  function hideRoundResult(){
+    roundResultOverlay.classList.remove('show');
+    setTimeout(function(){ roundResultOverlay.classList.add('hidden'); }, 200);
+  }
+  nextRoundBtn.addEventListener('click', hideRoundResult);
+
+  /* ================= BATTLE FLOW (server-decided) ================= */
+  function startBattlePhase(msg){
+    clearRoundTimers();
+    hideRoundResult();
+    state.battleWinnerSide = msg.win ? 'player' : 'enemy';
+    state.totalPower=msg.yourPower; state.enemyPower=msg.enemyPower;
+    state.battleAnimDone=false;
+    stopSceneRendering();
+    showScreen('screen-battle');
+    enterBattleMode(function(){
+      state.battleAnimDone=true;
+      if(state.pendingSettle) applySettle();
+    });
+  }
+  function applySettle(){
+    var m=state.pendingSettle; state.pendingSettle=null;
+    if(!m) return;
+    state.totalMedals=m.coins; state.mikoshiLevel=m.level||0; state.lastOutcome=m.outcome;
+    if(m.win){ state.tourWins=(state.tourWins||0)+1; state.earnedThisTour=(state.earnedThisTour||0)+(m.gained||0); }
+    if(m.outcome==='continue'){
+      state.tourRound=m.streak||0;
+      advanceTournamentNet(m.gained||0);
+    } else if(m.outcome==='champion'){
+      showResultScreen();
+    } else {
+      startAdScreen(AD_SPONSORS[1], '広告視聴で挽回チャンス', showPredictionScreen);
+    }
+  }
+  function advanceTournamentNet(coins){
+    state.advancing=true;
+    showScreen('screen-match');
+    buildAvatarGrid();
+    mikoshiLiveLabel.textContent='🏆 '+TOUR_LABEL[Math.min(state.tourRound||0,2)]+'進出！ 🪙+'+coins+'獲得';
+    enterMatchViewerMode();
+    roundIndicatorEl.textContent=TOUR_LABEL[Math.min(state.tourRound||0,2)]+'｜次の対戦相手を探しています…';
+    countdownText.classList.add('show'); countdownText.textContent='次の対戦相手を探しています…';
+    NET.send({ t:'continueTour' });
+  }
+
+  /* ================= PREDICTION (loss path only) ================= */
+  function showPredictionScreen(){
+    showScreen('screen-prediction');
+    var pool=TEAM_NAME_POOL.filter(function(n){ return n!==state.teamName && n!==state.enemyTeamName; });
+    var a=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    var b=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    predictionBtnA.textContent=a; predictionBtnB.textContent=b;
+    predictionChoiceRow.classList.remove('hidden');
+    predictionSuspense.classList.add('hidden');
+    predictionResult.textContent=''; predictionResult.classList.remove('show');
+    predictionContinueBtn.classList.add('hidden');
+    function resolve(){
+      predictionChoiceRow.classList.add('hidden');
+      predictionSuspense.classList.remove('hidden');
+      setTimeout(function(){
+        predictionSuspense.classList.add('hidden');
+        var correct=Math.random()<0.5;
+        predictionResult.textContent = correct ? '🎯 的中！さすがの読み！' : '😅 残念、はずれでした…';
+        predictionResult.classList.add('show');
+        predictionContinueBtn.classList.remove('hidden');
+      }, 1100);
+    }
+    predictionBtnA.onclick=resolve; predictionBtnB.onclick=resolve;
+    predictionContinueBtn.onclick=showResultScreen;
+  }
+
+  /* ================= RESULT ================= */
+  function showResultScreen(){
+    showScreen('screen-result');
+    var champ = state.lastOutcome==='champion';
+    resultHeadline.textContent = champ ? '🏆 トーナメント優勝！！' : (TOUR_LABEL[Math.min(state.tourRound||0,2)]+' 敗退…');
+    resultPower.textContent=state.totalPower;
+    resultMedals.textContent='+'+(state.earnedThisTour||0);
+    resultStageNote.innerHTML = champ
+      ? ('全'+(state.tourWins||0)+'勝で駆け上がった！ 勝利＋貢献ボーナスを獲得<br>⛩ 連の神輿：'+STAGE_LABEL[state.mikoshiLevel||0])
+      : (((state.tourWins||0)>0 ? ('ここまで'+(state.tourWins||0)+'勝、🪙+'+(state.earnedThisTour||0)+'獲得。') : 'コインは勝利＆貢献で獲得。')+'悔しさは次の祭りで！');
+    resultToGachaBtn.onclick=showMyPage;
+  }
+
+  /* ================= GACHA (server-authoritative) ================= */
+  function showGachaScreen(){
+    showScreen('screen-gacha');
+    gachaMedalBadge.textContent='🪙 所持コイン: '+state.totalMedals+'枚';
+    gachaResultCard.classList.add('hidden');
+    gachaToEquipBtn.classList.add('hidden');
+    gachaCapsule.className='gacha-capsule';
+    gachaGlow.className='gacha-glow';
+    gachaDrawBtn.classList.remove('hidden');
+    gachaDrawBtn.disabled = state.totalMedals<GACHA_COST;
+    gachaDrawBtn.style.opacity = state.totalMedals<GACHA_COST ? '0.5' : '1';
+    if(state.totalMedals<GACHA_COST) gachaMedalBadge.textContent+='（コインは勝利＆貢献で獲得！）';
+  }
+  gachaDrawBtn.addEventListener('click', function(){
+    if(state.totalMedals<GACHA_COST || state.gachaBusy) return;
+    state.gachaBusy=true;
+    gachaDrawBtn.classList.add('hidden');
+    gachaCapsule.classList.add('shaking');
+    NET.send({ t:'gacha' });
+  });
+  function handleGachaResult(msg){
+    state.totalMedals=msg.coins;
+    var avatar=catalogByKey(msg.key);
+    state.ownedAvatars.push(avatar);
+    var rarity=msg.rarity;
+    if(rarity==='SSR') SFX.ssr(); else SFX.tick();
+    gachaMedalBadge.textContent='🪙 所持コイン: '+state.totalMedals+'枚';
+    setTimeout(function(){
+      gachaCapsule.classList.remove('shaking');
+      gachaCapsule.classList.add('cracked');
+      gachaGlow.className='gacha-glow show rarity-'+rarity.toLowerCase();
+      setTimeout(function(){
+        gachaAvatarIcon.textContent=avatar.icon;
+        gachaAvatarName.textContent=avatar.name;
+        gachaAvatarRarity.textContent=avatar.rarity;
+        gachaAvatarRarity.className='gacha-rarity-badge rarity-'+rarity.toLowerCase();
+        gachaResultCard.classList.remove('hidden');
+        gachaToEquipBtn.classList.remove('hidden');
+        state.gachaBusy=false;
+      }, 450);
+    }, 900);
+  }
+  gachaToEquipBtn.addEventListener('click', showEquipScreen);
+  $('gachaBackBtn').addEventListener('click', showMyPage);
+  equipMoreGachaBtn.addEventListener('click', function(){ stopSceneRendering(); showGachaScreen(); });
+
+  /* ================= EQUIP ================= */
+  function showEquipScreen(){
+    showScreen('screen-equip');
+    equipStageLabel.textContent='チームの神輿：'+STAGE_LABEL[state.mikoshiLevel||0]+'（勝利で自動強化）';
+    enterViewerMode();
+    renderEquipList();
+  }
+  function renderEquipList(){
+    equipList.innerHTML='';
+    state.ownedAvatars.forEach(function(avatar, idx){
+      var equipped=!!state.equippedKeys[avatar.key];
+      var row=document.createElement('div');
+      row.className='equip-row'+(idx===state.ownedAvatars.length-1?' is-new':'');
+      row.innerHTML='<span class="equip-icon">'+avatar.icon+'</span>'+
+        '<span class="equip-name">'+escapeHtml(avatar.name)+' <span class="rar">('+avatar.rarity+')</span></span>'+
+        (idx===state.ownedAvatars.length-1?'<span class="equip-new-badge">NEW</span>':'')+
+        '<button type="button" class="btn-primary equip-btn'+(equipped?' is-equipped':'')+'">'+(equipped?'装備中':'装備する')+'</button>';
+      var btn=row.querySelector('button');
+      btn.addEventListener('click', function(){
+        if(!viewerParts || state.equippedKeys[avatar.key]) return;
+        equipCostume(viewerParts, avatar);
+        state.equippedKeys[avatar.key]=true;
+        NET.send({ t:'equip', key:avatar.key });
+        renderEquipList();
+      });
+      equipList.appendChild(row);
+    });
+  }
+  function showMyPage(){
+    stopSceneRendering();
+    showScreen('screen-mypage');
+    document.getElementById('mypageName').textContent=(state.playerName||'ゲスト')+' さん';
+    document.getElementById('mypageCoins').textContent=state.totalMedals;
+    document.getElementById('mypageCostumes').textContent=state.ownedAvatars.length;
+    document.getElementById('mypageMikoshi').textContent='チームの神輿：'+STAGE_LABEL[state.mikoshiLevel||0];
+  }
+  document.getElementById('mypageGachaBtn').addEventListener('click', showGachaScreen);
+  document.getElementById('mypageAvatarBtn').addEventListener('click', showEquipScreen);
+  document.getElementById('mypageRetryBtn').addEventListener('click', function(){
+    stopSceneRendering();
+    showScreen('screen-title');
+    setTimeout(enterTitleMode, 480);
+  });
+  retryBtn.addEventListener('click', function(){
+    stopSceneRendering();
+    showMyPage();
+  });
+
+  /* ================= TITLE SHOWCASE ================= */
+  function enterTitleMode(){
+    if(!initThree()) return;
+    if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+    clearScene(); setupLights();
+    var build=buildMikoshi({ teamName:'祭', variant:'classic' });
+    setMikoshiStage(build.parts, 1);
+    build.root.position.set(0,-0.3,0);
+    scene.add(build.root);
+    scene.add(makeContactShadow(2.8,0,-1.28,0));
+    scene.add(buildParticleSet({ count:36, radius:2.5, yMin:-1.3, yMax:1.8, speedMin:0.06, speedMax:0.16, color:0xdcae48, size:0.05, dir:1, opacity:0.6 }));
+    camera.position.set(0,0.3,5.4);
+    threeCanvas.classList.add('show');
+    var start=performance.now(), last=start;
+    function frame(now){
+      var dt=(now-last)/1000; last=now;
+      var elapsed=(now-start)/1000;
+      build.root.rotation.y=elapsed*0.28;
+      build.root.position.y=-0.3+Math.sin(elapsed*1.4)*0.03;
+      camera.lookAt(0,-0.2,0);
+      animateAllParticles(scene, dt);
+      renderer.render(scene, camera);
+      rafId=requestAnimationFrame(frame);
+    }
+    rafId=requestAnimationFrame(frame);
+  }
+
+  /* ================= INIT (online) ================= */
+  titleStartBtn.addEventListener('click', function(){
+    initAudio(); initThree(); stopSceneRendering();
+    if(state.pid){ NET.send({t:'listTeams'}); showScreen('screen-teamselect'); }
+    else showScreen('screen-login');
+  });
+  var joinBtn=$('joinBtn'), nickInput=$('nickInput');
+  joinBtn.addEventListener('click', function(){
+    var name=(nickInput.value||'').trim();
+    if(!name && !state.token){ showToast('ニックネームを入力してください'); nickInput.focus(); return; }
+    joinBtn.disabled=true; joinBtn.textContent='接続中…';
+    state.awaitingWelcome=true;
+    var doReg=function(){ NET.send({ t:'register', token:state.token, name:name }); };
+    if(NET.isConnected()) doReg(); else NET.connect(doReg);
+    setTimeout(function(){
+      if(state.awaitingWelcome){ state.awaitingWelcome=false; joinBtn.disabled=false; joinBtn.textContent='オンラインで参加'; showToast('サーバーに接続できません…'); }
+    }, 8000);
+  });
+  nickInput.addEventListener('keydown', function(e){ if(e.key==='Enter') joinBtn.click(); });
+  teamConfirmBtn.addEventListener('click', confirmTeamSelection);
+  var trBtn=$('teamRefreshBtn');
+  if(trBtn) trBtn.addEventListener('click', function(){ SFX.tick(); NET.send({t:'listTeams'}); });
+  lobbyReadyBtn.addEventListener('click', function(){
+    SFX.tick();
+    state.tourWins=0; state.earnedThisTour=0; state.needAd=true;
+    NET.send({ t:'ready' });
+  });
+
+  NET.on('welcome', function(msg){
+    state.pid=msg.pid; state.token=msg.token; state.playerName=msg.name;
+    state.totalMedals=msg.coins||0;
+    state.ownedAvatars=(msg.owned||[]).map(catalogByKey);
+    state.equippedKeys={};
+    (msg.equipped||[]).forEach(function(k){ state.equippedKeys[k]=true; });
+    try{ localStorage.setItem('mikoshiToken', msg.token); }catch(e){}
+    if(state.awaitingWelcome){
+      state.awaitingWelcome=false;
+      joinBtn.disabled=false; joinBtn.textContent='オンラインで参加';
+      SFX.tick();
+      runQrSequence();
+    }
+  });
+  NET.on('err', function(msg){
+    showToast(msg.msg||'エラーが発生しました');
+    if(state.awaitingWelcome){ state.awaitingWelcome=false; joinBtn.disabled=false; joinBtn.textContent='オンラインで参加'; }
+    if(msg.code==='coins'){ state.gachaBusy=false; showGachaScreen(); }
+  });
+  NET.on('teams', function(msg){
+    state.teamList=msg.list||[];
+    var a=document.querySelector('.screen.active');
+    if(a && a.id==='screen-teamselect') buildTeamSelectScreen();
+  });
+  NET.on('lobby', renderLobby);
+  NET.on('searching', onSearching);
+  NET.on('matched', onMatched);
+  NET.on('round', scheduleRoundFromServer);
+  NET.on('tapped', function(msg){ if(msg.pid!==state.pid){ lightDot(msg.pid); matchViewerTapFeedback(); } });
+  NET.on('roundResult', onRoundResult);
+  NET.on('battle', startBattlePhase);
+  NET.on('settle', function(msg){ state.pendingSettle=msg; if(state.battleAnimDone) applySettle(); });
+  NET.on('gachaResult', handleGachaResult);
+  NET.on('equipped', function(msg){
+    state.equippedKeys={};
+    (msg.equipped||[]).forEach(function(k){ state.equippedKeys[k]=true; });
+  });
+
+  try{ state.token=localStorage.getItem('mikoshiToken')||null; }catch(e){}
+  NET.connect();
+  buildTeamSelectScreen();
+  enterTitleMode();
+
+})();
+</script>
+</body>
+</html>

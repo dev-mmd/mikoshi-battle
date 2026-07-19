@@ -1,0 +1,22 @@
+{
+  "name": "seno-mikoshi-battle-online",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test_e2e.js && node test_browser.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "jsdom": "^29.1.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0",
+    "three": "^0.128.0"
+  }
+}
