@@ -50,6 +50,23 @@ docker run -p 3000:3000 -v $(pwd)/data:/app/data mikoshi
 | `BOT_MATCH_AFTER` | 5000 | 対戦相手不在時にCPU戦へ切替えるまで(ms) |
 | `CUE_LEAD` | 3600 | ラウンド開始→「せーの！」まで(ms) |
 | `RESULT_VIEW` / `BATTLE_VIEW` | 5600 / 7600 | 結果・対戦演出の表示時間(ms) |
+| `GOOGLE_CLIENT_ID` | （なし） | 設定するとログイン画面に「Googleでログイン」が表示される（下記手順） |
+
+## Googleログインを有効にする手順
+
+未設定でも従来どおりニックネームで遊べます。有効にすると、同じGoogleアカウントなら**別の端末でも同じコイン・衣装データ**で遊べるようになります。
+
+1. [Google Cloud Console](https://console.cloud.google.com/) にログインし、新しいプロジェクトを作成（無料）
+2. 「APIとサービス」→「OAuth同意画面」→ User Type は **外部** を選択し、アプリ名などを入力して保存
+3. 「APIとサービス」→「認証情報」→「認証情報を作成」→「OAuthクライアントID」→ アプリの種類は **ウェブアプリケーション**
+4. 「承認済みのJavaScript生成元」に以下を追加：
+   - 本番: `https://＜あなたのRenderのURL＞`（例 `https://mikoshi-battle.onrender.com`）
+   - 開発用（任意）: `http://localhost:3000`
+5. 作成すると表示される「クライアントID」（`xxxx.apps.googleusercontent.com` 形式）をコピー
+6. Renderのダッシュボード → 対象サービス → **Environment** → 環境変数 `GOOGLE_CLIENT_ID` にそのIDを設定 → 自動で再デプロイ
+7. ゲームのログイン画面に「Googleでログイン」ボタンが出れば完了
+
+※ 注意: Render無料プランではデプロイのたびにプレイヤーデータがリセットされます（Googleログインでも同様）。データを恒久保存するには有料の永続ディスクか外部データベースが必要です。
 
 ## 仕様（デモから継承・サーバーで強制）
 
@@ -62,7 +79,7 @@ docker run -p 3000:3000 -v $(pwd)/data:/app/data mikoshi
 ## テスト（同梱）
 
 ```bash
-node test_e2e.js      # 実WebSocket×4クライアント: PvP/協力/連戦/ガチャ/不正 (47チェック)
+node test_e2e.js      # 実WebSocket×4クライアント: PvP/協力/連戦/ガチャ/不正 (約48チェック)
 node test_browser.js  # 実クライアントHTML(jsdom)を実サーバーに接続した通しテスト
 ```
 

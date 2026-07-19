@@ -187,6 +187,13 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
 #powerTotal{ color:var(--kin-1); }
 .mikoshi-live-area{ position:relative; height:33vh; min-height:190px; pointer-events:none; z-index:2; display:flex; align-items:flex-end; justify-content:center; }
 .mikoshi-live-label{ background:var(--scrim); border:1px solid var(--line); border-radius:22px; padding:7px 18px; font-size:12px; font-weight:800; color:var(--kin-1); backdrop-filter:blur(6px); margin-bottom:6px; transition:transform .15s; letter-spacing:.06em; box-shadow:0 8px 22px rgba(10,6,24,.35); }
+.build-meter{ position:absolute; top:6px; left:50%; transform:translateX(-50%); width:min(300px,80%); background:var(--scrim); border:1px solid var(--line-soft); border-radius:12px; padding:7px 12px 9px; backdrop-filter:blur(6px); box-shadow:0 8px 22px rgba(10,6,24,.3); }
+.build-meter-row{ display:flex; justify-content:space-between; align-items:baseline; font-size:12px; font-weight:800; color:var(--kin-1); font-variant-numeric:tabular-nums; }
+.build-meter-row span:last-child{ font-size:10px; color:var(--fuji); font-weight:700; }
+.build-meter-track{ height:5px; background:rgba(247,240,222,.14); border-radius:3px; overflow:hidden; margin-top:5px; }
+.build-meter-fill{ height:100%; width:0%; background:linear-gradient(90deg,var(--shu),var(--kin-2)); border-radius:3px; transition:width .25s ease-out; }
+.build-meter.tierup{ animation:meter-flash .6s ease-out; }
+@keyframes meter-flash{ 0%{ box-shadow:0 0 0 0 rgba(249,230,160,.8); } 100%{ box-shadow:0 0 0 14px rgba(249,230,160,0); } }
 .mikoshi-live-label.pop{ transform:scale(1.14); }
 .tap-zone{ flex:1; display:flex; flex-direction:column; touch-action:none; position:relative; z-index:2; }
 .avatar-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(17px,1fr)); gap:4px; padding:12px 2px 4px; align-content:start; }
@@ -305,8 +312,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
 
 .conn-pill{ position:fixed; top:calc(8px + env(safe-area-inset-top)); right:10px; z-index:65; font-size:10px; letter-spacing:.08em; padding:5px 11px; border-radius:20px; background:rgba(20,14,42,.75); border:1px solid rgba(216,73,44,.55); color:#f0b9a8; backdrop-filter:blur(6px); }
 .conn-pill.ok{ border-color:var(--line); color:var(--kin-1); }
-.variant-row{ display:flex; gap:8px; margin-top:8px; }
-.variant-chip{ flex:1; font-size:12px; font-weight:700; padding:8px 4px; border-radius:8px; border:1px solid var(--line-soft); background:rgba(18,12,38,.7); color:var(--fuji); }
+.variant-row{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.variant-chip{ flex:1 1 21%; font-size:12px; font-weight:700; padding:8px 4px; border-radius:8px; border:1px solid var(--line-soft); background:rgba(18,12,38,.7); color:var(--fuji); }
 .variant-chip.sel{ border-color:var(--kin-2); color:var(--kin-1); box-shadow:0 0 12px rgba(224,182,84,.25); }
 .nick-input{ background:rgba(18,12,38,.7); border:1px solid var(--line); border-radius:12px; padding:14px 16px; color:var(--kinari); font-size:16px; width:100%; max-width:290px; text-align:center; }
 .nick-input::placeholder{ color:#8a86ae; }
@@ -378,6 +385,11 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       <p class="sub-copy rv" style="--d:.2s;margin:6px 0 20px;max-width:300px;">全国のプレイヤーとリアルタイム対戦！<br>戦績・コイン・衣装はこの端末に保存されます。</p>
       <input type="text" id="nickInput" class="nick-input rv" style="--d:.28s" maxlength="10" placeholder="ニックネーム（10文字まで）">
       <button id="joinBtn" type="button" class="btn-gold btn-large rv" style="--d:.36s;max-width:290px;margin-top:14px;">オンラインで参加</button>
+      <div id="googleLoginWrap" class="hidden" style="margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;width:240px;"><span style="flex:1;height:1px;background:var(--line-soft);"></span><span style="font-size:11px;color:var(--fuji);">または</span><span style="flex:1;height:1px;background:var(--line-soft);"></span></div>
+        <div id="gsiButtonHost"></div>
+        <p style="font-size:11px;color:var(--fuji);margin:0;">Googleでログインすると、別の端末でも同じデータで遊べます</p>
+      </div>
       <p class="demo-note rv" style="--d:.5s">※同じ連に入った仲間と一緒にタップして戦えます。<br>対戦相手が見つからない時はライバル連（CPU）が登場します。</p>
     </div>
   </section>
@@ -437,6 +449,10 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       <span id="powerTotal">パワー: 0</span>
     </header>
     <div class="mikoshi-live-area">
+      <div class="build-meter" id="buildMeter">
+        <div class="build-meter-row"><span id="buildCount">🔥 タップ 0</span><span id="buildNext"></span></div>
+        <div class="build-meter-track"><div class="build-meter-fill" id="buildFill"></div></div>
+      </div>
       <div class="mikoshi-live-label" id="mikoshiLiveLabel">あなたのお神輿</div>
     </div>
     <div id="tapZone" class="tap-zone">
@@ -577,10 +593,27 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   var TOUR_LABEL=['準々決勝','準決勝','決勝'];
   var CLASH_LABEL=['一の突き！','二の突き！','決着！！'];
   var TEAM_NAME_POOL=['雷神会','龍虎睦','疾風連','朱雀組','黄金衆','豪傑連','不知火睦','阿吽組','花火連','千年睦'];
+  /* 全国の神輿様式（server.js の VARIANTS と必ず一致させる）
+   * 実在の様式を参考: 江戸型(黒漆×金・鳳凰) / 京都祇園の六角 / 築地の八角 /
+   * 神明型(白木・千木勝男木) / 大阪・堺の布団太鼓(朱の座布団5段) */
   var MIKOSHI_VARIANTS={
     classic:{ label:'黄金', svgRoof:'#1e1838', svgBody:'#dcae48' },
     kuro:{ label:'漆黒', svgRoof:'#2a2038', svgBody:'#1c1626' },
-    shiro:{ label:'白鳳', svgRoof:'#b03424', svgBody:'#ece2c8' }
+    shiro:{ label:'白鳳', svgRoof:'#b03424', svgBody:'#ece2c8' },
+    rokkaku:{ label:'六角', svgRoof:'#b8912f', svgBody:'#f1cf6b' },
+    hakkaku:{ label:'八角', svgRoof:'#14101e', svgBody:'#6b5a2a' },
+    shinmei:{ label:'白木', svgRoof:'#8a6a3e', svgBody:'#e8d8b0' },
+    futon:{ label:'布団', svgRoof:'#c9321f', svgBody:'#2a2038' }
+  };
+  /* 3D形状パラメータ: sides=胴と屋根の面数, roof=屋根形式, finial=頂上飾り */
+  var MIKOSHI_SHAPES={
+    classic:{ sides:4, roof:'curved', finial:'phoenix' },
+    kuro:{ sides:4, roof:'curved', finial:'phoenix' },
+    shiro:{ sides:4, roof:'curved', finial:'phoenix' },
+    rokkaku:{ sides:6, roof:'curved', finial:'phoenix' },
+    hakkaku:{ sides:8, roof:'curved', finial:'phoenix' },
+    shinmei:{ sides:4, roof:'gable', finial:'chigi' },
+    futon:{ sides:4, roof:'futon', finial:'giboshi' }
   };
   var PRESET_TEAMS=[
     { name:'湊組', size:12, skill:'mid', variant:'classic' },
@@ -617,6 +650,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     pid:null, token:null, playerName:'',
     roomId:null, teamName:'', teamSize:8, variant:'classic', members:[], mikoshiLevel:0,
     round:0, totalPower:0, totalMedals:0, phase:'idle', playerTapped:false,
+    matchTaps:0, buildTier:0,
     cuePerf:0, roundTimers:[], tappedPids:{}, roundEvents:[], botTimers:[],
     ownedAvatars:[], equippedKeys:{},
     enemyTeamName:'', enemySize:0, enemySkill:'mid', enemyVariant:'classic', enemyPower:0, enemyLevel:0,
@@ -635,6 +669,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   var adEyebrow=$('adEyebrow'), adCanvas=$('adCanvas'), adRewardFlash=$('adRewardFlash'), adProgressFill=$('adProgressFill'), adSkipBtn=$('adSkipBtn');
   var roundIndicatorEl=$('roundIndicator'), powerTotalEl=$('powerTotal');
   var mikoshiLiveLabel=$('mikoshiLiveLabel');
+  var buildMeterEl=$('buildMeter'), buildCountEl=$('buildCount'), buildNextEl=$('buildNext'), buildFillEl=$('buildFill');
   var tapZone=$('tapZone'), avatarGridEl=$('avatarGrid');
   var countdownText=$('countdownText'), cueText=$('cueText'), ringFg=$('ringFg'), tapTarget=$('tapTarget'), playerTapInfo=$('playerTapInfo');
   var roundResultOverlay=$('roundResultOverlay'), judgementBadge=$('judgementBadge');
@@ -1014,7 +1049,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
 
   /* ================= 3D v6: MIKOSHI PARTS ================= */
   /* 唐破風屋根: deep concave sag + strong flared upturn (LatheGeometry(pts,4) technique) */
-  function buildCurvedRoof(mat){
+  function buildCurvedRoof(mat, sides){
+    sides=sides||4;
     var pts=[], N=14;
     for(var i=0;i<=N;i++){
       var t=i/N;
@@ -1026,9 +1062,69 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     /* under-eave return so the roof reads thick from below */
     pts.push(new THREE.Vector2(1.22,0.135));
     pts.push(new THREE.Vector2(1.06,0.10));
-    var geo=new THREE.LatheGeometry(pts,4); geo.rotateY(Math.PI/4);
+    var geo=new THREE.LatheGeometry(pts,sides); geo.rotateY(Math.PI/sides);
     var m=new THREE.Mesh(geo,mat);
     return m;
+  }
+  /* 神明型: 切妻の直線屋根＋千木（X字の板）＋勝男木（棟上の丸太） */
+  function buildGableRoof(woodDark, woodLight){
+    var g=new THREE.Group();
+    [-1,1].forEach(function(s){
+      var slope=new THREE.Mesh(new THREE.BoxGeometry(1.78,0.05,0.92), woodDark);
+      slope.rotation.x=s*0.66; slope.position.set(0,0.5,s*0.36);
+      g.add(slope);
+      var edge=new THREE.Mesh(new THREE.BoxGeometry(1.82,0.03,0.06), brightGold());
+      edge.rotation.x=s*0.66; edge.position.set(0,0.245,s*0.68);
+      g.add(edge);
+    });
+    var ridge=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.09,0.12), woodDark);
+    ridge.position.y=0.78; g.add(ridge);
+    /* 千木: 両端でX字に交差して天を突く2枚板 */
+    [-0.78,0.78].forEach(function(x){
+      [-1,1].forEach(function(s){
+        var chigi=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.55,0.07), woodLight);
+        chigi.rotation.x=s*0.42; chigi.position.set(x,0.98,0);
+        g.add(chigi);
+      });
+    });
+    /* 勝男木: 棟の上に直角に並ぶ丸太4本 */
+    for(var i=0;i<4;i++){
+      var k=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.44,7), woodLight);
+      k.rotation.x=Math.PI/2; k.position.set(-0.45+i*0.3,0.86,0);
+      g.add(k);
+    }
+    return g;
+  }
+  /* 布団太鼓: 朱の座布団を5段重ねた屋根（大阪・堺の太鼓台） */
+  function buildFutonRoof(){
+    var g=new THREE.Group();
+    var futonM=new THREE.MeshStandardMaterial({ color:0xc9321f, roughness:0.62, envMap:ENVCUBE, envMapIntensity:0.5, emissive:0x2a0602, emissiveIntensity:0.28 });
+    var pipeM=brightGold();
+    for(var i=0;i<5;i++){
+      var w=1.5-i*0.07, d=1.24-i*0.06, y=0.3+i*0.135;
+      var f=new THREE.Mesh(new THREE.BoxGeometry(w,0.12,d), futonM);
+      f.position.y=y; g.add(f);
+      /* 布団の縁の金パイピング */
+      var trim=new THREE.Mesh(new THREE.BoxGeometry(w+0.03,0.022,d+0.03), pipeM);
+      trim.position.y=y-0.055; g.add(trim);
+    }
+    /* 四隅の白い房 */
+    var fusaM=new THREE.MeshStandardMaterial({ color:0xf3ecda, roughness:0.8 });
+    [[0.72,0.6],[-0.72,0.6],[0.72,-0.6],[-0.72,-0.6]].forEach(function(p){
+      var fusa=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.055,0.22,7), fusaM);
+      fusa.position.set(p[0],0.28,p[1]); g.add(fusa);
+    });
+    return g;
+  }
+  /* 擬宝珠（玉ねぎ形の頂上飾り） */
+  function buildGiboshi(){
+    var g=new THREE.Group(), m=brightGold();
+    var base=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.13,0.07,10), m); g.add(base);
+    var ball=new THREE.Mesh(new THREE.SphereGeometry(0.11,12,12), m);
+    ball.scale.y=1.15; ball.position.y=0.14; g.add(ball);
+    var tip=new THREE.Mesh(new THREE.ConeGeometry(0.045,0.13,8), m);
+    tip.position.y=0.3; g.add(tip);
+    return g;
   }
   /* 蕨手 */
   function buildWarabite(mat){
@@ -1272,12 +1368,30 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     var accentEmissive=opts.accentEmissiveHex!==undefined?opts.accentEmissiveHex:0xff5a36;
     var root=new THREE.Group(); root.name='mikoshiRoot';
     var gold=goldMaterial(), bg=brightGold(), black=lacquerBlack(), red=lacquerRed();
+    var shape=MIKOSHI_SHAPES[opts.variant||'classic']||MIKOSHI_SHAPES.classic;
+    var sides=shape.sides;
+    var polyBody=sides>4; /* 六角・八角は胴が多角柱 */
+    var woodLight=null, woodDark=null;
     var roofMat, bodyMat;
     if(opts.variant==='shiro'){
       roofMat=new THREE.MeshStandardMaterial({ color:0xb03424, metalness:0.45, roughness:0.3, envMap:ENVCUBE, envMapIntensity:0.8, emissive:0x2a0804, emissiveIntensity:0.25 });
       bodyMat=new THREE.MeshStandardMaterial({ color:0xece2c8, metalness:0.12, roughness:0.55, envMap:ENVCUBE, envMapIntensity:0.4 });
     } else if(opts.variant==='kuro'){
       roofMat=black; bodyMat=black;
+    } else if(opts.variant==='rokkaku'){
+      /* 京都・祇園型の六角: 金ピカで華麗 */
+      roofMat=gold; bodyMat=latticeGold();
+    } else if(opts.variant==='hakkaku'){
+      /* 築地・八角: 重厚な黒漆×金 */
+      roofMat=black; bodyMat=black;
+    } else if(opts.variant==='shinmei'){
+      /* 神明型: 白木（無塗装の明るい木）＋控えめな金具 */
+      woodLight=new THREE.MeshStandardMaterial({ color:0xe6d3ab, metalness:0.04, roughness:0.62, envMap:ENVCUBE, envMapIntensity:0.3 });
+      woodDark=new THREE.MeshStandardMaterial({ color:0xc4a877, metalness:0.05, roughness:0.58, envMap:ENVCUBE, envMapIntensity:0.3 });
+      roofMat=woodDark; bodyMat=woodLight;
+    } else if(opts.variant==='futon'){
+      /* 布団太鼓: 朱の座布団×黒漆の櫓 */
+      roofMat=red; bodyMat=black;
     } else {
       roofMat=black; bodyMat=latticeGold();
     }
@@ -1328,69 +1442,111 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     /* --- 玉垣 --- */
     var fence=buildTamagaki(gold); fence.position.y=-0.47; root.add(fence);
 
-    /* --- 胴 (shrine body) --- */
-    var body=new THREE.Mesh(new THREE.BoxGeometry(0.82,0.64,0.68), bodyMat); body.position.y=-0.15; root.add(body);
-    /* 長押 bands */
-    var nage1=new THREE.Mesh(new THREE.BoxGeometry(0.88,0.05,0.74), gold); nage1.position.y=0.12; root.add(nage1);
-    var nage2=new THREE.Mesh(new THREE.BoxGeometry(0.88,0.05,0.74), gold); nage2.position.y=-0.44; root.add(nage2);
-    /* corner pillars */
-    [[0.43,0.36],[-0.43,0.36],[0.43,-0.36],[-0.43,-0.36]].forEach(function(p){
-      var pil=new THREE.Mesh(new THREE.CylinderGeometry(0.042,0.042,0.66,10), gold);
-      pil.position.set(p[0],-0.15,p[1]); root.add(pil);
-      var pcap=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), bg);
-      pcap.position.set(p[0],0.19,p[1]); root.add(pcap);
-    });
-    /* gilded doors on 4 faces */
-    var doorTex=makeDoorTexture();
-    var doorMat=new THREE.MeshStandardMaterial({ map:doorTex, metalness:0.85, roughness:0.32, envMap:ENVCUBE, envMapIntensity:1.0, emissive:0x1c1202, emissiveIntensity:0.25 });
-    [[0,0.349,0],[0,-0.349,Math.PI],[0.419,0,Math.PI/2],[-0.419,0,-Math.PI/2]].forEach(function(d){
-      var door=new THREE.Mesh(new THREE.PlaneGeometry(0.4,0.48), doorMat);
-      if(d[2]===0){ door.position.set(0,-0.17,d[1]); }
-      else if(Math.abs(d[2])===Math.PI){ door.position.set(0,-0.17,d[1]); }
-      else { door.position.set(d[0],-0.17,0); }
-      door.rotation.y=d[2];
-      root.add(door);
-    });
-    /* mini vermillion torii on front step */
-    var mtorii=new THREE.Group();
-    [-0.13,0.13].forEach(function(x){
-      var c=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.017,0.2,6), red);
-      c.position.set(x,0.1,0); mtorii.add(c);
-    });
-    var kasa=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.022,0.03), black); kasa.position.y=0.2; mtorii.add(kasa);
-    var nuki=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.018,0.026), red); nuki.position.y=0.145; mtorii.add(nuki);
-    mtorii.position.set(0,-0.535,0.47); root.add(mtorii);
-
-    /* --- 屋根 (deep black-lacquer roof, gold trims, medallions, brackets) --- */
-    var masugumi=buildMasugumi(0.5,0.4,0.16,gold); root.add(masugumi);
-    var eave=new THREE.Mesh(new THREE.BoxGeometry(1.66,0.06,1.34), black); eave.position.y=0.22; root.add(eave);
-    var eaveTrim=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.028,1.38), bg); eaveTrim.position.y=0.258; root.add(eaveTrim);
-    root.add(buildEaveMedallions(0.845,0.685,0.22,bg));
-    var roof=buildCurvedRoof(roofMat); roof.position.y=0.24; roof.scale.set(1.0,0.95,0.8); root.add(roof);
-    /* gold ridge line accents on the 4 hips */
-    for(var hi=0;hi<4;hi++){
-      var a2=Math.PI/4+hi*Math.PI/2;
-      var hip=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-        new THREE.Vector3(0,0.795,0),
-        new THREE.Vector3(Math.cos(a2)*0.67,0.58,Math.sin(a2)*0.54),
-        new THREE.Vector3(Math.cos(a2)*1.22,0.36,Math.sin(a2)*0.976)
-      ]),10,0.018,6,false), gold);
-      root.add(hip);
+    /* --- 胴 (shrine body): 四角柱 or 多角柱（六角・八角） --- */
+    var bodyRot=Math.PI/2-Math.PI/sides; /* 平らな面が正面(+z)を向く回転 */
+    if(polyBody){
+      var bodyGeo=new THREE.CylinderGeometry(0.46,0.46,0.64,sides); bodyGeo.rotateY(bodyRot);
+      var body=new THREE.Mesh(bodyGeo, bodyMat); body.position.y=-0.15; root.add(body);
+      [0.12,-0.44].forEach(function(y){
+        var ng=new THREE.CylinderGeometry(0.5,0.5,0.05,sides); ng.rotateY(bodyRot);
+        var nage=new THREE.Mesh(ng, gold); nage.position.y=y; root.add(nage);
+      });
+      for(var pi2=0;pi2<sides;pi2++){
+        var pa=pi2*Math.PI*2/sides+bodyRot;
+        var pil=new THREE.Mesh(new THREE.CylinderGeometry(0.038,0.038,0.66,8), gold);
+        pil.position.set(Math.cos(pa)*0.46,-0.15,Math.sin(pa)*0.46); root.add(pil);
+        var pcap=new THREE.Mesh(new THREE.SphereGeometry(0.046,8,8), bg);
+        pcap.position.set(Math.cos(pa)*0.46,0.19,Math.sin(pa)*0.46); root.add(pcap);
+      }
+      /* 正面の扉のみ（多角柱の平面に貼る） */
+      var apo=0.46*Math.cos(Math.PI/sides);
+      var pdoor=new THREE.Mesh(new THREE.PlaneGeometry(0.36,0.46),
+        new THREE.MeshStandardMaterial({ map:makeDoorTexture(), metalness:0.85, roughness:0.32, envMap:ENVCUBE, envMapIntensity:1.0, emissive:0x1c1202, emissiveIntensity:0.25 }));
+      pdoor.position.set(0,-0.17,apo+0.006); root.add(pdoor);
+    } else {
+      var body=new THREE.Mesh(new THREE.BoxGeometry(0.82,0.64,0.68), bodyMat); body.position.y=-0.15; root.add(body);
+      var nage1=new THREE.Mesh(new THREE.BoxGeometry(0.88,0.05,0.74), polyBody?gold:(shape.finial==='chigi'?woodDark:gold)); nage1.position.y=0.12; root.add(nage1);
+      var nage2=new THREE.Mesh(new THREE.BoxGeometry(0.88,0.05,0.74), shape.finial==='chigi'?woodDark:gold); nage2.position.y=-0.44; root.add(nage2);
+      [[0.43,0.36],[-0.43,0.36],[0.43,-0.36],[-0.43,-0.36]].forEach(function(p){
+        var pil=new THREE.Mesh(new THREE.CylinderGeometry(0.042,0.042,0.66,10), shape.finial==='chigi'?woodLight:gold);
+        pil.position.set(p[0],-0.15,p[1]); root.add(pil);
+        var pcap=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), shape.finial==='chigi'?woodDark:bg);
+        pcap.position.set(p[0],0.19,p[1]); root.add(pcap);
+      });
+      /* 扉: 白木の神明型は板戸、それ以外は金の御扉 */
+      var doorMat = shape.finial==='chigi'
+        ? woodDark
+        : new THREE.MeshStandardMaterial({ map:makeDoorTexture(), metalness:0.85, roughness:0.32, envMap:ENVCUBE, envMapIntensity:1.0, emissive:0x1c1202, emissiveIntensity:0.25 });
+      [[0,0.349,0],[0,-0.349,Math.PI],[0.419,0,Math.PI/2],[-0.419,0,-Math.PI/2]].forEach(function(d){
+        var door=new THREE.Mesh(new THREE.PlaneGeometry(0.4,0.48), doorMat);
+        if(d[2]===0){ door.position.set(0,-0.17,d[1]); }
+        else if(Math.abs(d[2])===Math.PI){ door.position.set(0,-0.17,d[1]); }
+        else { door.position.set(d[0],-0.17,0); }
+        door.rotation.y=d[2];
+        root.add(door);
+      });
     }
-    [[0.83,0.66],[-0.83,0.66],[0.83,-0.66],[-0.83,-0.66]].forEach(function(p){
-      var wb=buildWarabite(bg); wb.position.set(p[0],0.345,p[1]);
-      wb.rotation.y=Math.atan2(p[1],p[0])+Math.PI/2; root.add(wb);
-    });
-    /* 箱棟 + 露盤 + 鳳凰 */
-    var hakomune=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.09,0.26), black); hakomune.position.y=0.795; root.add(hakomune);
-    var hakoTrim=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.026,0.3), bg); hakoTrim.position.y=0.845; root.add(hakoTrim);
-    var roban=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.115,0.09,10), gold); roban.position.y=0.9; root.add(roban);
+    /* mini vermillion torii on front step（布団太鼓は太鼓台なので鳥居なし） */
+    if(shape.roof!=='futon'){
+      var mtorii=new THREE.Group();
+      [-0.13,0.13].forEach(function(x){
+        var c=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.017,0.2,6), red);
+        c.position.set(x,0.1,0); mtorii.add(c);
+      });
+      var kasa=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.022,0.03), black); kasa.position.y=0.2; mtorii.add(kasa);
+      var nuki=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.018,0.026), red); nuki.position.y=0.145; mtorii.add(nuki);
+      mtorii.position.set(0,-0.535,0.47); root.add(mtorii);
+    }
+
+    /* --- 屋根: 唐破風カーブ（4/6/8角）・切妻白木（神明）・座布団5段（布団太鼓） --- */
     var finialSlot=new THREE.Group(); finialSlot.name='finialSlot'; finialSlot.position.y=0.945;
-    finialSlot.add(buildPhoenix());
+    if(shape.roof==='curved'){
+      if(sides===4){
+        var masugumi=buildMasugumi(0.5,0.4,0.16,gold); root.add(masugumi);
+        var eave=new THREE.Mesh(new THREE.BoxGeometry(1.66,0.06,1.34), black); eave.position.y=0.22; root.add(eave);
+        var eaveTrim=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.028,1.38), bg); eaveTrim.position.y=0.258; root.add(eaveTrim);
+        root.add(buildEaveMedallions(0.845,0.685,0.22,bg));
+      } else {
+        var eg=new THREE.CylinderGeometry(0.94,0.94,0.06,sides); eg.rotateY(bodyRot);
+        var eaveP=new THREE.Mesh(eg, black); eaveP.position.y=0.22; root.add(eaveP);
+        var etg=new THREE.CylinderGeometry(0.97,0.97,0.028,sides); etg.rotateY(bodyRot);
+        var eaveTrimP=new THREE.Mesh(etg, bg); eaveTrimP.position.y=0.258; root.add(eaveTrimP);
+      }
+      var rsx=(sides===4)?1.0:0.92, rsy=0.95, rsz=(sides===4)?0.8:0.78;
+      var roof=buildCurvedRoof(roofMat, sides); roof.position.y=0.24; roof.scale.set(rsx,rsy,rsz); root.add(roof);
+      /* gold ridge line accents on each hip */
+      for(var hi=0;hi<sides;hi++){
+        var a2=Math.PI/sides+hi*Math.PI*2/sides;
+        var hip=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0,0.795,0),
+          new THREE.Vector3(Math.cos(a2)*0.67*rsx,0.58,Math.sin(a2)*0.67*rsz),
+          new THREE.Vector3(Math.cos(a2)*1.22*rsx,0.36,Math.sin(a2)*1.22*rsz)
+        ]),10,0.018,6,false), gold);
+        root.add(hip);
+        var wb=buildWarabite(bg);
+        wb.position.set(Math.cos(a2)*1.17*rsx,0.345,Math.sin(a2)*1.17*rsz);
+        wb.rotation.y=Math.atan2(Math.sin(a2)*1.17*rsz,Math.cos(a2)*1.17*rsx)+Math.PI/2; root.add(wb);
+      }
+      /* 箱棟 + 露盤 */
+      var hakomune=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.09,0.26), black); hakomune.position.y=0.795; root.add(hakomune);
+      var hakoTrim=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.026,0.3), bg); hakoTrim.position.y=0.845; root.add(hakoTrim);
+      var roban=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.115,0.09,10), gold); roban.position.y=0.9; root.add(roban);
+    } else if(shape.roof==='gable'){
+      var eaveG=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.06,1.1), woodDark); eaveG.position.y=0.22; root.add(eaveG);
+      var gable=buildGableRoof(woodDark, woodLight); gable.position.y=0.24; root.add(gable);
+      finialSlot.position.y=1.3; /* 千木は屋根組み込み。スロットは空のまま上に */
+    } else if(shape.roof==='futon'){
+      var eaveF=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.06,1.24), black); eaveF.position.y=0.22; root.add(eaveF);
+      var eaveFT=new THREE.Mesh(new THREE.BoxGeometry(1.54,0.026,1.28), bg); eaveFT.position.y=0.258; root.add(eaveFT);
+      var futonRoof=buildFutonRoof(); futonRoof.position.y=0.06; root.add(futonRoof);
+    }
+    if(shape.finial==='phoenix') finialSlot.add(buildPhoenix());
+    else if(shape.finial==='giboshi') finialSlot.add(buildGiboshi());
     root.add(finialSlot);
 
     /* --- 飾り紐 (orange ropes from roof corners w/ tassels + gold bells) --- */
     var ropeMat=new THREE.MeshStandardMaterial({ color:0xe0762a, roughness:0.6, envMap:ENVCUBE, envMapIntensity:0.35, emissive:0x30160a, emissiveIntensity:0.35 });
+    if(shape.roof!=='futon')
     [[0.82,0.62],[-0.82,0.62],[0.82,-0.62],[-0.82,-0.62]].forEach(function(p){
       var sx=p[0], sz=p[1];
       var curve=new THREE.CatmullRomCurve3([
@@ -1449,6 +1605,100 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     flameGroup.add(flameParticles);
     root.add(flameGroup);
 
+    /* --- タップ累計ビルドアップ（6段階。タップが増えるほど飾りが増えて豪華になる） --- */
+    var buildupGroups=[];
+    function bgAdd(g){ g.visible=false; root.add(g); buildupGroups.push(g); }
+    /* 段階1: 小提灯の輪 */
+    (function(){
+      var g=new THREE.Group();
+      for(var i=0;i<8;i++){
+        var a=i/8*Math.PI*2, r=1.05;
+        var lm=new THREE.MeshStandardMaterial({ map:chochinTex, color:accent, emissive:accentEmissive, emissiveIntensity:0.9, roughness:0.5 });
+        var l=new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8), lm);
+        l.scale.y=1.3; l.position.set(Math.cos(a)*r,-0.52,Math.sin(a)*r*0.8);
+        g.add(l);
+      }
+      bgAdd(g);
+    })();
+    /* 段階2: 屋根の金綱 */
+    (function(){
+      var g=new THREE.Group();
+      var ring=new THREE.Mesh(new THREE.TorusGeometry(0.95,0.028,8,36), bg);
+      ring.rotation.x=Math.PI/2; ring.position.y=0.3; g.add(ring);
+      var ring2=new THREE.Mesh(new THREE.TorusGeometry(0.78,0.022,8,32), bg);
+      ring2.rotation.x=Math.PI/2; ring2.position.y=0.52; g.add(ring2);
+      bgAdd(g);
+    })();
+    /* 段階3: 祭り幟 */
+    (function(){ bgAdd(buildFlags()); })();
+    /* 段階4: 軒の風鈴 */
+    (function(){
+      var g=new THREE.Group();
+      var bellM=new THREE.MeshStandardMaterial({ color:0xf6d878, metalness:0.95, roughness:0.18, envMap:ENVCUBE, envMapIntensity:1.4, emissive:0x3a2a08, emissiveIntensity:0.5 });
+      for(var i=0;i<6;i++){
+        var a=i/6*Math.PI*2;
+        var x=Math.cos(a)*0.92, z=Math.sin(a)*0.74;
+        var wire=new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.006,0.12,4), bellM);
+        wire.position.set(x,0.28,z); g.add(wire);
+        var bell=new THREE.Mesh(new THREE.ConeGeometry(0.045,0.07,8), bellM);
+        bell.position.set(x,0.19,z); g.add(bell);
+      }
+      bgAdd(g);
+    })();
+    /* 段階5: 金吹雪 */
+    (function(){
+      var g=new THREE.Group();
+      g.add(buildParticleSet({ count:56, radius:1.25, yMin:-0.8, yMax:1.5, speedMin:0.2, speedMax:0.5, color:0xf6d878, size:0.075, dir:-1, opacity:0.95 }));
+      bgAdd(g);
+    })();
+    /* 段階6: 御神光（光の柱） */
+    (function(){
+      var g=new THREE.Group();
+      var beamM=new THREE.MeshBasicMaterial({ color:0xffe9a8, transparent:true, opacity:0.16, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide });
+      var beam=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.85,3.4,14,1,true), beamM);
+      beam.position.y=1.0; g.add(beam);
+      var halo=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.05,8,28),
+        new THREE.MeshStandardMaterial({ color:0xf6d878, metalness:1, roughness:0.15, envMap:ENVCUBE, envMapIntensity:1.8, emissive:0xC89A30, emissiveIntensity:1.0 }));
+      halo.rotation.x=Math.PI/2; halo.position.y=1.35; g.add(halo);
+      var gl=new THREE.PointLight(0xffd77a,0.9,4.5); gl.position.y=1.1; g.add(gl);
+      bgAdd(g);
+    })();
+
+    /* --- 担ぎ手（法被姿のミニアバター10人。opts.carriers=true の時だけ） --- */
+    var carrierGroup=null;
+    if(opts.carriers){
+      carrierGroup=new THREE.Group(); carrierGroup.name='carriers';
+      var happiHex=opts.carrierHappiHex||0x2b4ea8;
+      var cSkin=new THREE.MeshStandardMaterial({ color:0xf2cba2, roughness:0.7 });
+      var cHappi=new THREE.MeshStandardMaterial({ color:happiHex, roughness:0.75 });
+      var cWhite=new THREE.MeshStandardMaterial({ color:0xf0e6d0, roughness:0.8 });
+      var cHair=new THREE.MeshStandardMaterial({ color:0x2a2432, roughness:0.85 });
+      [0.52,-0.52].forEach(function(z,zi){
+        [-1.25,-0.65,0,0.65,1.25].forEach(function(x,xi){
+          var c=new THREE.Group();
+          var legL=new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.026,0.2,6), cWhite); legL.position.set(-0.04,0.1,0);
+          var legR=legL.clone(); legR.position.x=0.04;
+          var torso=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.1,0.3,8), cHappi); torso.position.y=0.35;
+          var obi=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.045,8), cWhite); obi.position.y=0.24;
+          var head=new THREE.Mesh(new THREE.SphereGeometry(0.078,9,9), cSkin); head.position.y=0.6;
+          var hair=new THREE.Mesh(new THREE.SphereGeometry(0.081,9,7,0,Math.PI*2,0,Math.PI/2), cHair); hair.position.y=0.615;
+          var band=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.028,8), cWhite); band.position.y=0.63;
+          c.add(legL,legR,torso,obi,head,hair,band);
+          /* 内側の腕を上げて棒を支える */
+          var arm=new THREE.Mesh(new THREE.CylinderGeometry(0.024,0.022,0.26,6), cSkin);
+          var inward=(z>0)?-1:1;
+          arm.position.set(0,0.55,inward*0.07); arm.rotation.x=inward*0.5;
+          c.add(arm);
+          /* 肩が担ぎ棒(y=-0.94)に当たるように配置。足元は地面へ */
+          c.position.set(x,-1.6,z);
+          c.rotation.y=(opts.carrierFace||1)>0?-Math.PI/2:Math.PI/2; /* 進行方向を向く */
+          c.userData.stepPhase=(xi+zi*2.5)*1.1;
+          carrierGroup.add(c);
+        });
+      });
+      root.add(carrierGroup);
+    }
+
     root.traverse(function(o){
       if(o.isMesh){
         if(!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
@@ -1461,9 +1711,38 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
         lanternGroup:lanternGroup, lanternMeshes:lanternMeshes, lanternLights:lanternLights,
         curtainGroup:curtainGroup, curtainMat:curtainMat, teamName:opts.teamName||'チーム',
         trimGroup:trimGroup, flameGroup:flameGroup, flameParticles:flameParticles,
-        finialSlot:finialSlot, extraSlot:extraSlot
+        finialSlot:finialSlot, extraSlot:extraSlot, buildupGroups:buildupGroups,
+        carrierGroup:carrierGroup
       }
     };
+  }
+  /* 担ぎ手の足踏みアニメーション（体を小さく上下・ひねり） */
+  function animateCarriers(parts, tSec, intensity){
+    if(!parts || !parts.carrierGroup) return;
+    var kids=parts.carrierGroup.children;
+    for(var i=0;i<kids.length;i++){
+      var c=kids[i];
+      c.position.y=-1.6+Math.abs(Math.sin(tSec*7+c.userData.stepPhase))*0.045*(intensity||1);
+      c.rotation.z=Math.sin(tSec*7+c.userData.stepPhase)*0.06*(intensity||1);
+    }
+  }
+  /* タップ累計ビルドアップの段階しきい値とラベル */
+  var BUILD_TIERS=[
+    { taps:3,  label:'小提灯が灯った！' },
+    { taps:6,  label:'金の綱が巻かれた！' },
+    { taps:10, label:'祭り幟が立った！' },
+    { taps:14, label:'軒に風鈴が並んだ！' },
+    { taps:18, label:'金吹雪が舞い上がる！' },
+    { taps:24, label:'御神光、降臨！！' }
+  ];
+  function buildTierForTaps(n){
+    var t=0;
+    for(var i=0;i<BUILD_TIERS.length;i++) if(n>=BUILD_TIERS[i].taps) t=i+1;
+    return t;
+  }
+  function setMikoshiBuildup(parts, tier){
+    if(!parts || !parts.buildupGroups) return;
+    parts.buildupGroups.forEach(function(g,i){ g.visible=(i<tier); });
   }
   function levelScale(l){ return 1+(l||0)*0.09; }
   function setMikoshiStage(parts, stage){
@@ -2066,6 +2345,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     var build=buildMikoshi({ teamName:state.teamName, variant:state.variant });
     matchParts=build.parts;
     setMikoshiStage(matchParts, state.mikoshiLevel||0);
+    setMikoshiBuildup(matchParts, state.buildTier||0);
     build.root.position.set(0,0.35,0);
     scene.add(build.root);
     scene.add(makeContactShadow(2.6,0,-0.66,0));
@@ -2115,10 +2395,19 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     scene.add(envG);
     var crowdG=envG.getObjectByName('crowd');
 
-    var pBuild=buildMikoshi({ teamName:state.teamName, variant:state.variant, accentHex:0xe2472d, accentEmissiveHex:0xff5a2d });
-    var eBuild=buildMikoshi({ teamName:state.enemyTeamName, variant:state.enemyVariant, accentHex:0x3d6bff, accentEmissiveHex:0x6a8bff });
+    var pBuild=buildMikoshi({ teamName:state.teamName, variant:state.variant, accentHex:0xe2472d, accentEmissiveHex:0xff5a2d,
+      carriers:true, carrierHappiHex:0xc9321f, carrierFace:1 });
+    var eBuild=buildMikoshi({ teamName:state.enemyTeamName, variant:state.enemyVariant, accentHex:0x3d6bff, accentEmissiveHex:0x6a8bff,
+      carriers:true, carrierHappiHex:0x2b4ea8, carrierFace:-1 });
+    /* 担ぎ手の肩に乗る高さまで神輿を持ち上げる */
+    var BASE_Y=0.55;
+    var shadowP=makeContactShadow(3.0,-1.7,-1.04,0), shadowE=makeContactShadow(3.0,1.7,-1.04,0);
+    scene.add(shadowP, shadowE);
     setMikoshiStage(pBuild.parts, state.mikoshiLevel||0);
     setMikoshiStage(eBuild.parts, state.enemyLevel||0);
+    setMikoshiBuildup(pBuild.parts, state.buildTier||0);
+    // 相手のビルドアップはパワー比から推定して見せる
+    setMikoshiBuildup(eBuild.parts, Math.min(BUILD_TIERS.length, Math.round((state.enemyPower/Math.max(1,state.enemySize*ROUNDS))*BUILD_TIERS.length)));
     var pLS=levelScale(state.mikoshiLevel), eLS=levelScale(state.enemyLevel);
     scene.add(pBuild.root, eBuild.root);
     camera.position.set(0,1.5,6.0); camera.lookAt(0,0.1,0);
@@ -2144,13 +2433,33 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       var dt=now-last; last=now;
       director.step(dt);
       var s=director.evaluate();
-      pBuild.root.position.set(s.playerX, s.playerY, 0);
-      eBuild.root.position.set(s.enemyX, s.enemyY, 0);
+      /* 担ぎの躍動: 入場・練りでは肩の上下（揉み）、突進時は差し上げ気味に */
+      var tS=now/1000;
+      var carryBobP=0, carryBobE=0, sashiP=0, sashiE=0, carryInt=1;
+      if(s.phase==='entrance'||s.phase==='orbit'){
+        carryBobP=Math.abs(Math.sin(tS*6.5))*0.07;
+        carryBobE=Math.abs(Math.sin(tS*6.5+1.4))*0.07;
+      } else if(s.phase==='finalLunge'){
+        /* 勝者側は「差し上げ」で神輿を高く掲げて突っ込む */
+        carryInt=1.8;
+        var wpSide=(state.battleWinnerSide==='player');
+        var prog=wpSide?clamp01((s.playerX+1.7)/1.95):clamp01((1.7-s.enemyX)/1.95);
+        if(wpSide) sashiP=prog*0.34; else sashiE=prog*0.34;
+      } else if(s.phase==='clash1'||s.phase==='clash2'){
+        carryInt=1.6;
+      }
+      pBuild.root.position.set(s.playerX, s.playerY+BASE_Y+carryBobP+sashiP, 0);
+      eBuild.root.position.set(s.enemyX, s.enemyY+BASE_Y+carryBobE+sashiE, 0);
       pBuild.root.rotation.z=s.playerRotZ; eBuild.root.rotation.z=s.enemyRotZ;
       pBuild.root.scale.setScalar(s.playerScale*pLS); eBuild.root.scale.setScalar(s.enemyScale*eLS);
+      animateCarriers(pBuild.parts, tS, carryInt);
+      animateCarriers(eBuild.parts, tS+0.5, carryInt);
+      shadowP.position.x=s.playerX; shadowE.position.x=s.enemyX;
+      shadowP.material.opacity=clamp01(1.1-(s.playerY+carryBobP+sashiP));
+      shadowE.material.opacity=clamp01(1.1-(s.enemyY+carryBobE+sashiE));
       var camX=Math.sin(s.cameraAngle)*s.cameraRadius, camZ=Math.cos(s.cameraAngle)*s.cameraRadius;
-      camera.position.set(camX+(Math.random()-0.5)*s.shake, s.cameraHeight+(Math.random()-0.5)*s.shake, camZ);
-      camera.lookAt(s.cameraLookX, s.cameraLookY, 0);
+      camera.position.set(camX+(Math.random()-0.5)*s.shake, s.cameraHeight+(Math.random()-0.5)*s.shake+BASE_Y*0.5, camZ);
+      camera.lookAt(s.cameraLookX, s.cameraLookY+BASE_Y*0.6, 0);
       battlePlayerBar.style.width=(s.raceProgress*Math.min(100, state.totalPower/(state.teamSize*ROUNDS)*100))+'%';
       battleEnemyBar.style.width=(s.raceProgress*Math.min(100, state.enemyPower/(state.enemySize*ROUNDS)*100))+'%';
 
@@ -2163,7 +2472,13 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       }
       if(director.consumeHitEvent()){
         playImpactFlash(); SFX.clash();
-        var b=spawnSparkBurst(0,0,0); scene.add(b); bursts.push(b);
+        var b=spawnSparkBurst(0,BASE_Y+0.1,0); scene.add(b); bursts.push(b);
+        /* 地面の土煙 */
+        var dust=spawnSparkBurst(0,-0.95,0);
+        dust.material.color.setHex(0xb59a72); dust.material.size=0.16; dust.material.opacity=0.75;
+        dust.userData.burst.life=900;
+        dust.userData.burst.vel.forEach(function(v){ v.y*=0.35; v.x*=1.5; v.z*=1.5; });
+        scene.add(dust); bursts.push(dust);
         flashCenterMsg(CLASH_LABEL[Math.min(clashCount,2)], clashCount<2 ? 700 : 0);
         clashCount++;
       }
@@ -2361,6 +2676,33 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   /* ================= TEAM SELECT (online) ================= */
   function miniMikoshiSvg(variantKey){
     var v=MIKOSHI_VARIANTS[variantKey]||MIKOSHI_VARIANTS.classic;
+    if(variantKey==='shinmei'){
+      /* 神明型: 直線切妻＋千木＋勝男木 */
+      return '<svg class="team-mini-svg" viewBox="0 0 60 60">'+
+        '<ellipse cx="30" cy="52.5" rx="20" ry="2.8" fill="rgba(10,6,24,.4)"/>'+
+        '<line x1="16" y1="4" x2="22" y2="14" stroke="'+v.svgRoof+'" stroke-width="1.8"/><line x1="22" y1="4" x2="16" y2="14" stroke="'+v.svgRoof+'" stroke-width="1.8"/>'+
+        '<line x1="38" y1="4" x2="44" y2="14" stroke="'+v.svgRoof+'" stroke-width="1.8"/><line x1="44" y1="4" x2="38" y2="14" stroke="'+v.svgRoof+'" stroke-width="1.8"/>'+
+        '<rect x="26" y="6" width="3" height="6" rx="1.5" fill="'+v.svgRoof+'"/><rect x="31" y="6" width="3" height="6" rx="1.5" fill="'+v.svgRoof+'"/>'+
+        '<path d="M30 10 L8 25 L52 25 Z" fill="'+v.svgRoof+'" stroke="#a87e22" stroke-width="1"/>'+
+        '<rect x="18" y="27" width="24" height="17" rx="1.5" fill="'+v.svgBody+'" stroke="#a87e22" stroke-width="1"/>'+
+        '<rect x="26.5" y="30" width="7" height="11" fill="#c4a877" stroke="#7a5410" stroke-width=".8"/>'+
+        '<rect x="7" y="46" width="46" height="3.2" rx="1.6" fill="#e8d8b0"/>'+
+        '<circle cx="7.5" cy="47.6" r="2" fill="#c4a877"/><circle cx="52.5" cy="47.6" r="2" fill="#c4a877"/>'+
+        '</svg>';
+    }
+    if(variantKey==='futon'){
+      /* 布団太鼓: 朱の座布団5段 */
+      var f='';
+      for(var i=0;i<5;i++){ var w=40-i*4; f+='<rect x="'+(30-w/2)+'" y="'+(22-i*4.4)+'" width="'+w+'" height="4" rx="2" fill="'+v.svgRoof+'" stroke="#8c1d10" stroke-width=".7"/>'; }
+      return '<svg class="team-mini-svg" viewBox="0 0 60 60">'+
+        '<ellipse cx="30" cy="52.5" rx="20" ry="2.8" fill="rgba(10,6,24,.4)"/>'+
+        '<circle cx="30" cy="3.6" r="2.4" fill="#f6d878"/>'+f+
+        '<rect x="18" y="27" width="24" height="17" rx="1.5" fill="'+v.svgBody+'" stroke="#a87e22" stroke-width="1"/>'+
+        '<circle cx="30" cy="35.5" r="5.4" fill="#e8c765" stroke="#7a5410" stroke-width="1"/>'+
+        '<rect x="7" y="46" width="46" height="3.2" rx="1.6" fill="#1e1838"/>'+
+        '<circle cx="7.5" cy="47.6" r="2" fill="#e8c765"/><circle cx="52.5" cy="47.6" r="2" fill="#e8c765"/>'+
+        '</svg>';
+    }
     return '<svg class="team-mini-svg" viewBox="0 0 60 60">'+
       '<ellipse cx="30" cy="52.5" rx="20" ry="2.8" fill="rgba(10,6,24,.4)"/>'+
       '<circle cx="30" cy="6" r="2.6" fill="#f6d878"/>'+
@@ -2497,6 +2839,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   }
   function enterArena(){
     state.playerContrib=0; state.totalPower=0; state.round=0; state.tappedPids={};
+    if((state.tourRound||0)===0){ state.matchTaps=0; state.buildTier=0; }
+    updateBuildMeter();
     showScreen('screen-match');
     buildAvatarGrid();
     if(!state.advancing) mikoshiLiveLabel.textContent='あなたのお神輿';
@@ -2533,6 +2877,35 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     if(t>=0 && t<=TAP_DURATION_MS) state.roundEvents.push({ id:id, time:t });
     var dot=avatarGridEl.querySelector('[data-id="'+id+'"]');
     if(dot) dot.classList.add('tapped');
+    registerBuildTap();
+  }
+  /* タップ1回ごとに累計カウント→しきい値で神輿がビルドアップ */
+  function updateBuildMeter(){
+    if(!buildCountEl) return;
+    buildCountEl.textContent='🔥 タップ '+state.matchTaps;
+    var tier=state.buildTier;
+    if(tier>=BUILD_TIERS.length){
+      buildNextEl.textContent='最大まで豪華になった！';
+      buildFillEl.style.width='100%';
+    } else {
+      var prev=tier>0?BUILD_TIERS[tier-1].taps:0;
+      var next=BUILD_TIERS[tier].taps;
+      buildNextEl.textContent='あと'+(next-state.matchTaps)+'回で飾りが増える';
+      buildFillEl.style.width=Math.round(clamp01((state.matchTaps-prev)/(next-prev))*100)+'%';
+    }
+  }
+  function registerBuildTap(){
+    state.matchTaps++;
+    var tier=buildTierForTaps(state.matchTaps);
+    if(tier>state.buildTier){
+      state.buildTier=tier;
+      if(matchParts) setMikoshiBuildup(matchParts, tier);
+      matchPulse=1.6;
+      SFX.doon();
+      showToast('🎊 '+BUILD_TIERS[tier-1].label);
+      if(buildMeterEl){ buildMeterEl.classList.remove('tierup'); void buildMeterEl.offsetWidth; buildMeterEl.classList.add('tierup'); }
+    }
+    updateBuildMeter();
   }
   function resetDotsForNewRound(){
     state.tappedPids={}; state.roundEvents=[];
@@ -2712,10 +3085,13 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   /* ================= PREDICTION (loss path only) ================= */
   function showPredictionScreen(){
     showScreen('screen-prediction');
+    // デフォルトの選択肢A＝さっき自分たちを負かした相手（勝ち上がっていく姿を応援 or 対抗馬を応援）
     var pool=TEAM_NAME_POOL.filter(function(n){ return n!==state.teamName && n!==state.enemyTeamName; });
-    var a=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    var isRival=!!state.enemyTeamName;
+    var a=state.enemyTeamName || pool.splice(Math.floor(Math.random()*pool.length),1)[0];
     var b=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
-    predictionBtnA.textContent=a; predictionBtnB.textContent=b;
+    predictionBtnA.innerHTML=escapeHtml(a)+(isRival?'<br><span style="font-size:11px;color:var(--fuji);">さっきの対戦相手</span>':'');
+    predictionBtnB.textContent=b;
     predictionChoiceRow.classList.remove('hidden');
     predictionSuspense.classList.add('hidden');
     predictionResult.textContent=''; predictionResult.classList.remove('show');
@@ -2888,6 +3264,38 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     }, 8000);
   });
   nickInput.addEventListener('keydown', function(e){ if(e.key==='Enter') joinBtn.click(); });
+
+  /* ---- Googleログイン（サーバーに GOOGLE_CLIENT_ID が設定されている時だけ表示） ---- */
+  function initGoogleLogin(){
+    if(typeof fetch!=='function') return;
+    fetch('/auth-config').then(function(r){ return r.json(); }).then(function(cfg){
+      if(!cfg || !cfg.googleClientId) return;
+      var s=document.createElement('script');
+      s.src='https://accounts.google.com/gsi/client'; s.async=true; s.defer=true;
+      s.onload=function(){
+        try{
+          window.google.accounts.id.initialize({
+            client_id:cfg.googleClientId,
+            callback:function(resp){
+              if(!resp || !resp.credential) return;
+              state.awaitingWelcome=true;
+              var doReg=function(){ NET.send({ t:'register', gtoken:resp.credential, token:state.token, name:(nickInput.value||'').trim() }); };
+              if(NET.isConnected()) doReg(); else NET.connect(doReg);
+              setTimeout(function(){
+                if(state.awaitingWelcome){ state.awaitingWelcome=false; showToast('Googleログインに失敗しました…'); }
+              }, 8000);
+            }
+          });
+          var host=$('gsiButtonHost');
+          if(host) window.google.accounts.id.renderButton(host, { theme:'filled_blue', size:'large', shape:'pill', text:'signin_with', locale:'ja' });
+          var wrap=$('googleLoginWrap');
+          if(wrap) wrap.classList.remove('hidden');
+        }catch(e){}
+      };
+      document.head.appendChild(s);
+    }).catch(function(){});
+  }
+  initGoogleLogin();
   teamConfirmBtn.addEventListener('click', confirmTeamSelection);
   var trBtn=$('teamRefreshBtn');
   if(trBtn) trBtn.addEventListener('click', function(){ SFX.tick(); NET.send({t:'listTeams'}); });
@@ -2939,6 +3347,21 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   NET.connect();
   buildTeamSelectScreen();
   enterTitleMode();
+
+  /* テスト用フック: WebGLが無い環境でも全様式の3D組み立てを実行して破綻を検知する */
+  window.__mikoshiTest={
+    variants:Object.keys(MIKOSHI_VARIANTS),
+    buildAllVariants:function(){
+      var out=[];
+      Object.keys(MIKOSHI_VARIANTS).forEach(function(k){
+        var b=buildMikoshi({ teamName:'試', variant:k, carriers:true, carrierFace:1, carrierHappiHex:0xc9321f });
+        setMikoshiStage(b.parts, 4);
+        setMikoshiBuildup(b.parts, BUILD_TIERS.length);
+        out.push(k+':'+b.root.children.length);
+      });
+      return out;
+    }
+  };
 
 })();
 </script>
