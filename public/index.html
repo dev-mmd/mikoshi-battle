@@ -435,6 +435,17 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       <div class="join-feed" id="lobbyJoinFeed"></div>
       <p class="bonus-toast" id="lobbyBonusToast">エントリー受付完了</p>
       <button id="lobbyReadyBtn" type="button" class="btn-gold btn-large rv" style="--d:.4s;max-width:290px;margin-top:14px;">準備完了</button>
+      <button id="lobbyQrBtn" type="button" class="btn-lacquer btn-large rv" style="--d:.48s;max-width:290px;margin-top:10px;">QRで仲間を呼ぶ</button>
+    </div>
+    <div id="lobbyQrModal" class="result-overlay hidden">
+      <div class="result-card panel" style="max-width:300px;">
+        <h3 class="display" style="font-size:19px;margin:0 0 12px;">この連に仲間を誘う</h3>
+        <div class="qr-box" style="width:200px;height:200px;margin:0 auto;padding:12px;">
+          <div class="qr-grid" id="lobbyQrGrid"></div>
+        </div>
+        <p class="qr-caption" style="margin:14px 0;">仲間がこのQRを読み取ると、<br>同じ連に直接参加できます</p>
+        <button id="lobbyQrCloseBtn" type="button" class="btn-gold btn-large">閉じる</button>
+      </div>
     </div>
   </section>
 
@@ -798,6 +809,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     tick:function(){ tone({type:'triangle',f0:920,dur:0.06,gain:0.12}); },
     clash:function(){ tone({f0:95,f1:30,dur:0.5,gain:0.9}); noiseHit(0.22,0.5); },
     win:function(){ [660,880,1100].forEach(function(f,i){ tone({type:'triangle',f0:f,dur:0.4,gain:0.2,delay:i*0.13}); }); },
+    cheer:function(){ noiseHit(0.55,0.4); noiseHit(0.4,0.25,0.12);
+      [440,560,700].forEach(function(f,i){ tone({type:'triangle',f0:f+Math.random()*80,f1:f*1.25,dur:0.3,gain:0.05,delay:0.04*i}); }); },
     lose:function(){ tone({type:'triangle',f0:330,f1:170,dur:0.7,gain:0.18}); },
     ssr:function(){ [523,659,784,1046,1318].forEach(function(f,i){ tone({type:'triangle',f0:f,dur:0.5,gain:0.18,delay:i*0.09}); }); }
   };
@@ -2584,6 +2597,13 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     battleContinueBtn.classList.remove('show');
 
     var bursts=[]; var clashCount=0; var msgTimer=null;
+    var crowdExcite=0; /* 観客の興奮度: 激突の瞬間に1になり、徐々に落ち着く */
+    var prevPhase='entrance'; /* 最後の突進はスローモーションにする */
+    var winnerName = state.battleWinnerSide==='player' ? state.teamName : state.enemyTeamName;
+    var nameSprite=new THREE.Sprite(new THREE.SpriteMaterial({
+      map:makeTextTexture(winnerName+'　勝利！', { fg:'#ffe9a0', bg:'rgba(0,0,0,0)' }),
+      transparent:true, opacity:0, fog:false }));
+    nameSprite.scale.set(5.4,2.0,1); nameSprite.position.set(0,5.6,-9);
     function flashCenterMsg(text, holdMs){
       battleCenterMsg.textContent=text;
       battleCenterMsg.classList.remove('show'); void battleCenterMsg.offsetWidth; battleCenterMsg.classList.add('show');
@@ -2594,8 +2614,10 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     var last=performance.now();
     function frame(now){
       var dt=now-last; last=now;
-      director.step(dt);
+      /* 最後の突進はスローモーション（0.35倍速）で「タメ」を作る */
+      director.step(prevPhase==='finalLunge' ? dt*0.35 : dt);
       var s=director.evaluate();
+      prevPhase=s.phase;
       /* 担ぎの躍動: 入場・練りでは肩の上下（揉み）、突進時は差し上げ気味に */
       var tS=now/1000;
       var carryBobP=0, carryBobE=0, sashiP=0, sashiE=0, carryInt=1;
@@ -2625,15 +2647,20 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       camera.position.set(camX+(Math.random()-0.5)*s.shake, s.cameraHeight+(Math.random()-0.5)*s.shake+BASE_Y*0.5, camZ);
       camera.lookAt(s.cameraLookX, s.cameraLookY+BASE_Y*0.6, 0);
 
+      /* 観客: 普段は小さく揺れ、激突の瞬間に飛び跳ねて沸く */
+      crowdExcite*=Math.pow(0.25, dt/1000);
       if(crowdG){
         var tSec=now/1000;
+        var amp=0.06+0.28*crowdExcite;
         for(var ci=0;ci<crowdG.children.length;ci++){
           var cp=crowdG.children[ci];
-          cp.position.y=-1.05+Math.abs(Math.sin(tSec*cp.userData.bobSpeed+cp.userData.bobPhase))*0.06;
+          cp.position.y=-1.05+Math.abs(Math.sin(tSec*cp.userData.bobSpeed*(1+crowdExcite)+cp.userData.bobPhase))*amp;
+          cp.rotation.z=Math.sin(tSec*3+cp.userData.bobPhase)*0.08*crowdExcite;
         }
       }
       if(director.consumeHitEvent()){
-        playImpactFlash(); SFX.clash();
+        playImpactFlash(); SFX.clash(); SFX.cheer();
+        crowdExcite=1;
         var b=spawnSparkBurst(0,BASE_Y+0.1,0); scene.add(b); bursts.push(b);
         /* 地面の土煙 */
         var dust=spawnSparkBurst(0,-0.95,0);
@@ -2647,22 +2674,27 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       for(var i=bursts.length-1;i>=0;i--){
         if(!animateSparkBurst(bursts[i], dt)){ scene.remove(bursts[i]); bursts.splice(i,1); }
       }
+      if(s.phase==='settle') nameSprite.material.opacity=Math.min(1, nameSprite.material.opacity+dt/700);
       if(s.phase==='settle' && !battleContinueBtn.classList.contains('show')){
+        scene.add(nameSprite); /* 勝者名が夜空に浮かび上がる */
         if(state.battleWinnerSide==='player'){
           SFX.win();
-          var fwColors=[0xf1cf6b,0xff6a3d,0x5e8aff,0xff7ab8];
-          for(var fi=0;fi<4;fi++){
+          crowdExcite=1;
+          /* 花火のグランドフィナーレ: 2.5秒かけて9連発 */
+          var fwColors=[0xf1cf6b,0xff6a3d,0x5e8aff,0xff7ab8,0x8affc2,0xffe9a0];
+          for(var fi=0;fi<9;fi++){
             (function(idx){
               setTimeout(function(){
                 if(!rafId) return;
-                var fb=spawnSparkBurst(-2.5+idx*1.7, 4.2+Math.random()*1.4, -6);
-                fb.material.color.setHex(fwColors[idx%4]);
-                fb.material.size=0.11;
-                fb.userData.burst.life=1400;
-                fb.userData.burst.vel.forEach(function(v){ v.multiplyScalar(1.7); v.y+=0.4; });
+                var fb=spawnSparkBurst(-4+Math.random()*8, 3.6+Math.random()*3.2, -7-Math.random()*3);
+                fb.material.color.setHex(fwColors[idx%fwColors.length]);
+                fb.material.size=0.13;
+                fb.userData.burst.life=1700;
+                fb.userData.burst.vel.forEach(function(v){ v.multiplyScalar(2.0); v.y+=0.3; });
                 scene.add(fb); bursts.push(fb);
                 SFX.doon();
-              }, idx*380);
+                crowdExcite=Math.min(1, crowdExcite+0.5);
+              }, idx*280);
             })(fi);
           }
         } else { SFX.lose(); }
@@ -2762,30 +2794,29 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   }
 
   /* ================= QR ================= */
-  function buildQrGrid(){
-    qrGrid.innerHTML='';
-    /* 本物のQRコード（このゲームのURL）。スマホのカメラで読み取ると同じゲームが開く */
+  /* 指定の文字列を本物のQRコードとして描画する（読み取り可能）。失敗時は飾りグリッド */
+  function renderQrCells(container, text){
+    container.innerHTML='';
     try{
       if(typeof qrcode!=='undefined'){
         var qr=qrcode(0,'M');
-        qr.addData(location.origin);
+        qr.addData(text);
         qr.make();
         var n=qr.getModuleCount();
-        qrGrid.style.gridTemplateColumns='repeat('+n+',1fr)';
-        qrGrid.style.gridTemplateRows='repeat('+n+',1fr)';
+        container.style.gridTemplateColumns='repeat('+n+',1fr)';
+        container.style.gridTemplateRows='repeat('+n+',1fr)';
         for(var r=0;r<n;r++){
           for(var c=0;c<n;c++){
             var cell=document.createElement('div'); cell.className='qr-cell';
             if(qr.isDark(r,c)) cell.classList.add('on');
-            qrGrid.appendChild(cell);
+            container.appendChild(cell);
           }
         }
         return true;
       }
     }catch(e){}
-    /* QRライブラリが読み込めない環境では飾りのグリッドを表示 */
-    qrGrid.style.gridTemplateColumns='repeat(17,1fr)';
-    qrGrid.style.gridTemplateRows='repeat(17,1fr)';
+    container.style.gridTemplateColumns='repeat(17,1fr)';
+    container.style.gridTemplateRows='repeat(17,1fr)';
     var N=17;
     function finder(r,c){ return (r<5&&c<5)||(r<5&&c>=N-5)||(r>=N-5&&c<5); }
     for(var r2=0;r2<N;r2++){
@@ -2797,11 +2828,12 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
           on=(ir===0||ir===4||ic===0||ic===4||(ir===2&&ic===2));
         } else { on=Math.random()<0.42; }
         if(on) cell2.classList.add('on');
-        qrGrid.appendChild(cell2);
+        container.appendChild(cell2);
       }
     }
     return false;
   }
+  function buildQrGrid(){ return renderQrCells(qrGrid, location.origin); }
   function runQrSequence(){
     showScreen('screen-qr');
     var real=buildQrGrid();
@@ -3488,7 +3520,11 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   /* ================= INIT (online) ================= */
   titleStartBtn.addEventListener('click', function(){
     initAudio(); initThree(); stopSceneRendering();
-    if(state.pid){ NET.send({t:'listTeams'}); showScreen('screen-teamselect'); }
+    if(state.pid){
+      NET.send({t:'listTeams'});
+      showScreen('screen-teamselect');
+      if(state.inviteTeamId){ var tid=state.inviteTeamId; state.inviteTeamId=null; NET.send({ t:'joinTeam', id:tid }); }
+    }
     else showScreen('screen-login');
   });
   var joinBtn=$('joinBtn'), nickInput=$('nickInput');
@@ -3546,6 +3582,18 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     state.tourWins=0; state.earnedThisTour=0; state.needAd=true;
     NET.send({ t:'ready' });
   });
+  /* 連の招待QR: 読み取った仲間は ?team=連ID 付きURLで直接この連に入れる */
+  var lobbyQrBtn=$('lobbyQrBtn'), lobbyQrModal=$('lobbyQrModal'), lobbyQrGrid=$('lobbyQrGrid');
+  if(lobbyQrBtn) lobbyQrBtn.addEventListener('click', function(){
+    if(!state.roomId) return;
+    renderQrCells(lobbyQrGrid, location.origin+'/?team='+encodeURIComponent(state.roomId));
+    lobbyQrModal.classList.remove('hidden'); void lobbyQrModal.offsetWidth; lobbyQrModal.classList.add('show');
+  });
+  var lobbyQrCloseBtn=$('lobbyQrCloseBtn');
+  if(lobbyQrCloseBtn) lobbyQrCloseBtn.addEventListener('click', function(){
+    lobbyQrModal.classList.remove('show');
+    setTimeout(function(){ lobbyQrModal.classList.add('hidden'); }, 200);
+  });
 
   NET.on('welcome', function(msg){
     state.pid=msg.pid; state.token=msg.token; state.playerName=msg.name;
@@ -3558,7 +3606,15 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       state.awaitingWelcome=false;
       joinBtn.disabled=false; joinBtn.textContent='オンラインで参加';
       SFX.tick();
-      runQrSequence();
+      if(state.inviteTeamId){
+        /* 招待QR経由: 宣伝画面を飛ばしてその連へ直行 */
+        var tid=state.inviteTeamId; state.inviteTeamId=null;
+        showScreen('screen-teamselect');
+        NET.send({ t:'listTeams' });
+        NET.send({ t:'joinTeam', id:tid });
+      } else {
+        runQrSequence();
+      }
     }
   });
   NET.on('err', function(msg){
@@ -3600,6 +3656,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   });
 
   try{ state.token=localStorage.getItem('mikoshiToken')||null; }catch(e){}
+  try{ state.inviteTeamId=new URLSearchParams(location.search).get('team')||null; }catch(e){ state.inviteTeamId=null; }
   NET.connect();
   buildTeamSelectScreen();
   enterTitleMode();
