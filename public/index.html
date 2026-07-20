@@ -493,7 +493,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     <div class="battle-overlay">
       <div>
         <div class="battle-vs-banner" id="battleVsBanner"></div>
-        <div class="power-race">
+        <!-- パワーバーは勝敗が読めてしまうため非表示（盛り上げ優先） -->
+        <div class="power-race" style="display:none;">
           <div class="power-race-team"><div class="power-race-name" id="battlePlayerName"></div><div class="power-race-bar-track"><div class="power-race-bar-fill" id="battlePlayerBar"></div></div></div>
           <div class="power-race-team enemy"><div class="power-race-name" id="battleEnemyName"></div><div class="power-race-bar-track"><div class="power-race-bar-fill" id="battleEnemyBar"></div></div></div>
         </div>
@@ -661,7 +662,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     pid:null, token:null, playerName:'',
     roomId:null, teamName:'', teamSize:8, variant:'classic', members:[], mikoshiLevel:0,
     round:0, totalPower:0, totalMedals:0, phase:'idle', playerTapped:false,
-    matchTaps:0, buildTier:0,
+    syncedTotal:0, buildTier:0,
     cuePerf:0, roundTimers:[], tappedPids:{}, roundEvents:[], botTimers:[],
     ownedAvatars:[], equippedKeys:{},
     enemyTeamName:'', enemySize:0, enemySkill:'mid', enemyVariant:'classic', enemyPower:0, enemyLevel:0,
@@ -740,18 +741,24 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     for(var i=0;i<all.length;i++) all[i].classList.remove('active');
     $(id).classList.add('active');
   }
-  var wipeEl=document.getElementById('wipe'), wiping=false;
+  var wipeEl=document.getElementById('wipe'), wiping=false, wipeTarget=null;
   function showScreen(id){
+    /* 幕演出中に別の切り替えが来ても、常に「最後に要求された画面」を表示する
+     * （古い切り替え先で上書きして画面が戻ってしまう不具合の対策） */
+    wipeTarget=id;
     if(wiping || !wipeEl){ rawShowScreen(id); return; }
     wiping=true;
     wipeEl.classList.remove('opening');
     wipeEl.classList.add('closing');
     setTimeout(function(){
       wipeEl.classList.remove('closing'); wipeEl.classList.add('hold');
-      rawShowScreen(id);
+      rawShowScreen(wipeTarget);
       requestAnimationFrame(function(){ requestAnimationFrame(function(){
         wipeEl.classList.remove('hold'); wipeEl.classList.add('opening');
-        setTimeout(function(){ wipeEl.classList.remove('opening'); wiping=false; }, 600);
+        setTimeout(function(){
+          wipeEl.classList.remove('opening'); wiping=false;
+          if(wipeTarget) rawShowScreen(wipeTarget);
+        }, 600);
       }); });
     }, 470);
   }
@@ -1812,14 +1819,16 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   }
   /* タップ累計ビルドアップの段階しきい値とラベル。
    * トーナメント全体（3試合・最大72タップ前後）で育ち切る配分。連戦するほど豪華になる */
+  /* シンクロ数（ラウンド結果で発表される「同じ0.1秒に揃った人数」）の累計で成長。
+   * 1ラウンドで最大チーム人数ぶん。トーナメント3試合で育ち切る配分 */
   var BUILD_TIERS=[
-    { taps:4,  label:'玉垣が組まれた！' },
-    { taps:9,  label:'小提灯が灯った！' },
-    { taps:16, label:'飾り紐と房が結ばれた！' },
-    { taps:24, label:'金具が輝き、幟が立った！' },
-    { taps:34, label:'風鈴と金綱が飾られた！' },
-    { taps:46, label:'金吹雪が舞い上がる！' },
-    { taps:60, label:'御神光、降臨！！' }
+    { taps:3,  label:'玉垣が組まれた！' },
+    { taps:7,  label:'小提灯が灯った！' },
+    { taps:12, label:'飾り紐と房が結ばれた！' },
+    { taps:18, label:'金具が輝き、幟が立った！' },
+    { taps:26, label:'風鈴と金綱が飾られた！' },
+    { taps:35, label:'金吹雪が舞い上がる！' },
+    { taps:45, label:'御神光、降臨！！' }
   ];
   function buildTierForTaps(n){
     var t=0;
@@ -2165,8 +2174,58 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     g.position.set(x,-1.05,z); g.rotation.y=rotY;
     return g;
   }
+  /* 杉の木立: 幹＋重なった円錐の樹冠。夕暮れの逆光でシルエット気味に */
+  function buildForest(){
+    var g=new THREE.Group();
+    var trunkM=new THREE.MeshStandardMaterial({ color:0x3d2b1c, roughness:0.95 });
+    var canopyMs=[
+      new THREE.MeshStandardMaterial({ color:0x18301f, roughness:0.95 }),
+      new THREE.MeshStandardMaterial({ color:0x1e3a24, roughness:0.95 }),
+      new THREE.MeshStandardMaterial({ color:0x14281c, roughness:0.95 })
+    ];
+    for(var i=0;i<26;i++){
+      var a=(i/26)*Math.PI*2+Math.random()*0.24;
+      /* カメラ側（+z〜+x寄り）は遠めに置いて視界を塞がない */
+      var camSide=Math.sin(a)>0.2;
+      var r=(camSide?12:8.5)+Math.random()*(camSide?4:6);
+      var x=Math.cos(a)*r, z=Math.sin(a)*r;
+      /* 社殿の真後ろは避ける */
+      if(z<-6.4 && Math.abs(x)<4.4) continue;
+      var tree=new THREE.Group();
+      var h=2.6+Math.random()*3.4;
+      var trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.09+Math.random()*0.08,0.14+Math.random()*0.1,h*0.42,7), trunkM);
+      trunk.position.y=h*0.21; tree.add(trunk);
+      var cm=canopyMs[i%3];
+      var layers=3;
+      for(var L=0;L<layers;L++){
+        var lw=(1.0-L*0.24)*(0.9+Math.random()*0.5);
+        var cone=new THREE.Mesh(new THREE.ConeGeometry(lw, h*0.34, 8), cm);
+        cone.position.y=h*0.38+L*h*0.2; tree.add(cone);
+      }
+      tree.position.set(x,-1.05,z);
+      tree.rotation.y=Math.random()*Math.PI;
+      g.add(tree);
+    }
+    /* 遠景の山なみ（霧に溶けるシルエット） */
+    var mtnM=new THREE.MeshBasicMaterial({ color:0x232c3e });
+    [[ -14,-18, 15, 7.5 ],[ 4,-21, 18, 9 ],[ 16,-16, 13, 6.5 ],[ -22,-8, 12, 6 ],[ 22,-6, 12, 6 ]].forEach(function(m){
+      var mtn=new THREE.Mesh(new THREE.ConeGeometry(m[2], m[3], 7), mtnM);
+      mtn.position.set(m[0], -1.05+m[3]/2-0.6, m[1]);
+      g.add(mtn);
+    });
+    /* 石畳の外側は土と下草の地面 */
+    var soil=new THREE.Mesh(new THREE.RingGeometry(15.6,30,36),
+      new THREE.MeshStandardMaterial({ color:0x35301f, roughness:1.0 }));
+    soil.rotation.x=-Math.PI/2; soil.position.y=-1.06; g.add(soil);
+    /* 森の蛍 */
+    var ff=buildParticleSet({ count:26, radius:11, yMin:-0.9, yMax:1.6, speedMin:0.05, speedMax:0.16, color:0xcdea7a, size:0.07, dir:1, opacity:0.8 });
+    g.add(ff);
+    return g;
+  }
+
   function buildShrineEnvironment(){
     var env=new THREE.Group(); env.name='shrineEnv';
+    env.add(buildForest());
     /* bright dusk sky dome */
     var sky=new THREE.Mesh(new THREE.SphereGeometry(28,24,16),
       new THREE.MeshBasicMaterial({ map:makeSkyTexture(), side:THREE.BackSide, fog:false }));
@@ -2565,8 +2624,6 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       var camX=Math.sin(s.cameraAngle)*camR, camZ=Math.cos(s.cameraAngle)*camR;
       camera.position.set(camX+(Math.random()-0.5)*s.shake, s.cameraHeight+(Math.random()-0.5)*s.shake+BASE_Y*0.5, camZ);
       camera.lookAt(s.cameraLookX, s.cameraLookY+BASE_Y*0.6, 0);
-      battlePlayerBar.style.width=(s.raceProgress*Math.min(100, state.totalPower/(state.teamSize*ROUNDS)*100))+'%';
-      battleEnemyBar.style.width=(s.raceProgress*Math.min(100, state.enemyPower/(state.enemySize*ROUNDS)*100))+'%';
 
       if(crowdG){
         var tSec=now/1000;
@@ -2677,11 +2734,11 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(w-46,8,38,20);
     ctx.fillStyle='#fff'; ctx.font='bold 12px sans-serif'; ctx.fillText('AD', w-27, 22);
   }
-  function startAdScreen(sponsor, eyebrowText, onComplete){
+  function startAdScreen(sponsor, eyebrowText, onComplete, durationMs){
     showScreen('screen-ad');
     adEyebrow.textContent=eyebrowText||'広告視聴';
     var ctx=adCanvas.getContext('2d');
-    var startTime=performance.now(), duration=15000, completed=false, rafHandle;
+    var startTime=performance.now(), duration=durationMs||15000, completed=false, rafHandle;
     adSkipBtn.classList.add('hidden'); adRewardFlash.classList.remove('show');
     adProgressFill.style.transition='none'; adProgressFill.style.width='0%';
     void adProgressFill.offsetWidth;
@@ -3000,7 +3057,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   }
   function enterArena(){
     state.playerContrib=0; state.totalPower=0; state.round=0; state.tappedPids={};
-    if((state.tourRound||0)===0){ state.matchTaps=0; state.buildTier=0; }
+    if((state.tourRound||0)===0){ state.syncedTotal=0; state.buildTier=0; }
     updateBuildMeter();
     showScreen('screen-match');
     buildAvatarGrid();
@@ -3038,12 +3095,11 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     if(t>=0 && t<=TAP_DURATION_MS) state.roundEvents.push({ id:id, time:t });
     var dot=avatarGridEl.querySelector('[data-id="'+id+'"]');
     if(dot) dot.classList.add('tapped');
-    registerBuildTap();
   }
-  /* タップ1回ごとに累計カウント→しきい値で神輿がビルドアップ */
+  /* シンクロ数（ラウンド結果で発表された数）の累計メーター */
   function updateBuildMeter(){
     if(!buildCountEl) return;
-    buildCountEl.textContent='タップ '+state.matchTaps;
+    buildCountEl.textContent='シンクロ累計 '+state.syncedTotal;
     var tier=state.buildTier;
     if(tier>=BUILD_TIERS.length){
       buildNextEl.textContent='最大まで豪華になった！';
@@ -3051,22 +3107,27 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     } else {
       var prev=tier>0?BUILD_TIERS[tier-1].taps:0;
       var next=BUILD_TIERS[tier].taps;
-      buildNextEl.textContent='あと'+(next-state.matchTaps)+'回で飾りが増える';
-      buildFillEl.style.width=Math.round(clamp01((state.matchTaps-prev)/(next-prev))*100)+'%';
+      buildNextEl.textContent='あと'+(next-state.syncedTotal)+'で飾りが増える';
+      buildFillEl.style.width=Math.round(clamp01((state.syncedTotal-prev)/(next-prev))*100)+'%';
     }
   }
-  function registerBuildTap(){
-    state.matchTaps++;
-    var tier=buildTierForTaps(state.matchTaps);
+  /* ラウンド結果の発表後に、シンクロ数に応じて神輿をアップデートする */
+  function applyRoundBuildup(best){
+    state.syncedTotal+=best;
+    var tier=buildTierForTaps(state.syncedTotal);
+    updateBuildMeter();
     if(tier>state.buildTier){
       state.buildTier=tier;
-      if(matchParts) setMikoshiBuildup(matchParts, tier);
-      matchPulse=1.6;
-      SFX.doon();
-      showToast('🎊 '+BUILD_TIERS[tier-1].label);
-      if(buildMeterEl){ buildMeterEl.classList.remove('tierup'); void buildMeterEl.offsetWidth; buildMeterEl.classList.add('tierup'); }
+      /* 発表を見せてから一拍おいて強化演出 */
+      setTimeout(function(){
+        if(matchParts) setMikoshiBuildup(matchParts, tier);
+        matchPulse=1.8;
+        SFX.doon();
+        showToast(BUILD_TIERS[tier-1].label);
+        if(buildMeterEl){ buildMeterEl.classList.remove('tierup'); void buildMeterEl.offsetWidth; buildMeterEl.classList.add('tierup'); }
+        updateBuildMeter();
+      }, 700);
     }
-    updateBuildMeter();
   }
   function resetDotsForNewRound(){
     state.tappedPids={}; state.roundEvents=[];
@@ -3174,6 +3235,7 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     var contributed=msg.synced.indexOf(state.pid)>=0;
     if(contributed) state.playerContrib=(state.playerContrib||0)+1;
     matchViewerRoundSettled();
+    applyRoundBuildup(msg.best||0); /* 発表→シンクロ数に応じて神輿アップデート */
     var syncedMap={}; msg.synced.forEach(function(id){ syncedMap[id]=true; });
     var dots=avatarGridEl.querySelectorAll('.avatar-dot');
     for(var i=0;i<dots.length;i++){
@@ -3222,11 +3284,14 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     state.totalPower=msg.yourPower; state.enemyPower=msg.enemyPower;
     state.battleAnimDone=false;
     stopSceneRendering();
-    showScreen('screen-battle');
-    enterBattleMode(function(){
-      state.battleAnimDone=true;
-      if(state.pendingSettle) applySettle();
-    });
+    /* 結果発表（ぶつけ合い）の前に短い広告を挟む */
+    startAdScreen(AD_SPONSORS[Math.floor(Math.random()*AD_SPONSORS.length)], 'まもなく結果発表', function(){
+      showScreen('screen-battle');
+      enterBattleMode(function(){
+        state.battleAnimDone=true;
+        if(state.pendingSettle) applySettle();
+      });
+    }, 8000);
   }
   function applySettle(){
     var m=state.pendingSettle; state.pendingSettle=null;
@@ -3239,7 +3304,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
     } else if(m.outcome==='champion'){
       showResultScreen();
     } else {
-      startAdScreen(AD_SPONSORS[1], '広告視聴で挽回チャンス', showPredictionScreen);
+      /* 敗北時: ぶつけ合い前に広告を見ているので、ここでは直接応援予想へ */
+      showPredictionScreen();
     }
   }
   function advanceTournamentNet(coins){

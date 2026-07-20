@@ -106,23 +106,23 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
       const lbl = document.getElementById('judgeLabel').textContent;
       ok(lbl.length > 0, 'judgement m' + matchesPlayed + ' r' + r + ': ' + lbl);
     }
-    // battle → settle → 分岐（勝利:次戦探索 / 敗北:広告 / 優勝:結果）
-    await until(() => ['screen-battle'].includes(active()), 10000, 'battle screen');
+    // 3ラウンド後: 結果発表前の広告 → ぶつけ合い → settle → 分岐（勝利:次戦 / 敗北:応援予想 / 優勝:結果）
+    await until(() => active() === 'screen-ad', 10000, 'pre-battle ad m' + matchesPlayed);
+    await until(() => !document.getElementById('adSkipBtn').classList.contains('hidden'), 10000, 'pre-battle ad skip m' + matchesPlayed);
+    click('adSkipBtn');
+    // jsdomではぶつけ合い演出が即終了するため、battle画面は経由確認せず結果分岐だけ待つ
     await until(() => {
       const a = active();
-      if (a === 'screen-ad') { outcome = 'eliminated'; return true; }
+      if (a === 'screen-prediction') { outcome = 'eliminated'; return true; }
       if (a === 'screen-result') { outcome = 'champion'; return true; }
       if (a === 'screen-match' && document.getElementById('mikoshiLiveLabel').textContent.includes('進出')) return true;
       return false;
-    }, 15000, 'post-battle routing m' + matchesPlayed);
+    }, 20000, 'post-battle routing m' + matchesPlayed);
     if (!outcome) console.log('  advanced:', document.getElementById('mikoshiLiveLabel').textContent);
   }
   console.log('outcome after', matchesPlayed, 'match(es):', outcome || 'still winning (cap reached)');
 
   if (outcome === 'eliminated') {
-    await until(() => !document.getElementById('adSkipBtn').classList.contains('hidden'), 8000, 'loss ad skip');
-    click('adSkipBtn');
-    await until(() => active() === 'screen-prediction', 4000, 'prediction');
     click('predictionBtnA');
     await until(() => !document.getElementById('predictionContinueBtn').classList.contains('hidden'), 4000, 'prediction resolved');
     click('predictionContinueBtn');
