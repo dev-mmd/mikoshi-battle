@@ -6,9 +6,10 @@
 ## プロジェクト概要
 
 - 複数プレイヤーが「連（チーム）」を組み、「せーの！」の合図に合わせて同時にタップし、シンクロ率で対戦するゲーム
-- サーバー: `server.js`（Node.js / Express + ws）
-- クライアント: `public/index.html`（単一ファイル。Three.js r128 による3D演出込み、約166KB）
+- サーバー: `server.js`（Node.js / Express + ws、約640行）
+- クライアント: `public/index.html`（単一ファイル。Three.js r128 による3D演出込み、約200KB / 約3,700行）
 - デプロイ: GitHub の main ブランチに反映されると Render が自動でデプロイする
+- 神輿は全9様式（classic/kuro/shiro/rokkaku/hakkaku/shinmei/futon/chousa/dashi）。実在の様式を再現している
 
 ## 絶対に守るルール
 
@@ -32,24 +33,29 @@
 
 ```bash
 npm install
-node test_e2e.js       # サーバーの対戦ロジック検証（47チェック）
-node test_browser.js   # 実際の画面を動かす通しテスト
+node test_e2e.js       # サーバーの対戦ロジック検証（54チェック）
+node test_browser.js   # 実際の画面を動かす通しテスト（13〜17チェック）
 ```
 
-- `test_e2e.js` は PvP対戦・協力プレイ・連戦・ガチャ・不正タップ拒否を検証する
-- `test_browser.js` は jsdom 上で実際のクライアントを動かし、登録→対戦→結果→ガチャまで通す
+- `test_e2e.js` は PvP対戦・協力プレイ・連戦・ガチャ・不正タップ拒否・外部連携APIを検証する
+- `test_browser.js` は jsdom 上で実際のクライアントを動かし、登録→対戦→結果→ガチャまで通す。
+  勝敗の分岐によりチェック数は変動する（敗北13／勝利17）
 - タイミング系の定数（CUE_LEAD 等）は環境変数で上書き可能。テストは高速設定で動く
+- `test_browser.js` 実行中の「THREE.WebGLRenderer: Error creating WebGL context.」は
+  画面のない環境で動かしているための想定内の警告。エラーではない
+- ポート使用中（EADDRINUSE）で失敗したら、残っているテストサーバーを終了してから再実行する
 
 ## ファイル構成
 
 | ファイル | 役割 |
 |---|---|
-| `server.js` | ゲームサーバー本体（判定・経済・マッチング・永続化すべて） |
+| `server.js` | ゲームサーバー本体（判定・経済・マッチング・永続化・外部連携APIすべて） |
 | `public/index.html` | ゲーム画面（単一HTML。UI・3D・通信すべて入り） |
 | `package.json` | 依存関係（express, ws。開発用に jsdom, three） |
 | `test_e2e.js` / `test_browser.js` | 自動テスト |
 | `Dockerfile` / `render.yaml` | デプロイ設定（原則触らない） |
-| `README.md` | 起動・デプロイ手順 |
+| `README.md` | 起動・デプロイ手順、Googleログイン設定、外部連携API仕様 |
+| `HANDOFF.md` | ローカル環境への引き継ぎ手引き、未実装の改善案 |
 
 ## 運用上の注意（回答時に考慮すること）
 
