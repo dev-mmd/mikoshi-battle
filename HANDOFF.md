@@ -65,11 +65,12 @@ npm start
 ### テストを流す（変更後は必ず）
 
 ```bash
+node --test test_forcommunity.js   # forcommunity でログインの検証（5テスト）
 node test_e2e.js       # サーバーの対戦ロジック検証（54チェック）
 node test_browser.js   # 画面を実際に動かす通しテスト（13〜17チェック）
 ```
 
-両方とも最後に `ALL PASS` / `PASS` と出れば合格です。
+`npm test` で3つまとめて流せます。`test_forcommunity.js` は最後に `# fail 0` と出れば合格、残り2つは最後に `ALL PASS` / `PASS` と出れば合格です。
 `test_browser.js` 実行中に「THREE.WebGLRenderer: Error creating WebGL context.」という警告が出ますが、
 **画面のない環境で動かしているための想定内の警告**なので無視して構いません。
 
@@ -125,12 +126,14 @@ Render のダッシュボード → サービス → **Environment** で設定�
 | 変数名 | 何のため | 未設定だとどうなる |
 |---|---|---|
 | `GOOGLE_CLIENT_ID` | Googleログインを有効化 | ログインボタンが出ない（ニックネーム参加のみ） |
+| `FORCOMMUNITY_ISSUER` / `FORCOMMUNITY_CLIENT_ID` / `FORCOMMUNITY_CLIENT_SECRET` / `FORCOMMUNITY_REDIRECT_URI` | 「forcommunity でログイン」を有効化（4つすべて必要） | ボタンが出ない・`/auth/forcommunity/*` は 404 |
 | `API_KEY` | 外部システム連携の合言葉 | 外部APIが使えない（503を返す） |
 | `WEBHOOK_URL` | 試合結果を外部に送る先 | 送信しない |
 | `WEBHOOK_SECRET` | Webhookの署名用 | 空で送信 |
 | `DATA_DIR` | データ保存先 | `./data` に保存 |
 
-**Googleログインの設定手順**は `README.md` に詳しく書いてあります。
+**Googleログイン・forcommunity でログインの設定手順**は `README.md` に詳しく書いてあります。
+`FORCOMMUNITY_CLIENT_SECRET` は秘密の値です。このリポジトリは公開なので、ファイルには書かず Render の Environment にだけ入れてください（一覧は `.env.example`）。
 
 ---
 
