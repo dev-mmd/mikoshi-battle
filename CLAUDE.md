@@ -33,6 +33,8 @@
 
 ```bash
 npm install
+npm test               # 下の3つをまとめて実行
+node --test test_forcommunity.js   # forcommunity でログイン（OIDC）の検証
 node test_e2e.js       # サーバーの対戦ロジック検証（54チェック）
 node test_browser.js   # 実際の画面を動かす通しテスト（13〜17チェック）
 ```

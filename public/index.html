@@ -390,10 +390,14 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
       <p class="sub-copy rv" style="--d:.2s;margin:6px 0 20px;max-width:300px;">全国のプレイヤーとリアルタイム対戦！<br>戦績・コイン・衣装はこの端末に保存されます。</p>
       <input type="text" id="nickInput" class="nick-input rv" style="--d:.28s" maxlength="10" placeholder="ニックネーム（10文字まで）">
       <button id="joinBtn" type="button" class="btn-gold btn-large rv" style="--d:.36s;max-width:290px;margin-top:14px;">オンラインで参加</button>
-      <div id="googleLoginWrap" class="hidden" style="margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:8px;">
-        <div style="display:flex;align-items:center;gap:10px;width:240px;"><span style="flex:1;height:1px;background:var(--line-soft);"></span><span style="font-size:11px;color:var(--fuji);">または</span><span style="flex:1;height:1px;background:var(--line-soft);"></span></div>
+      <div id="loginOrSep" class="hidden" style="margin-top:14px;display:flex;align-items:center;gap:10px;width:240px;"><span style="flex:1;height:1px;background:var(--line-soft);"></span><span style="font-size:11px;color:var(--fuji);">または</span><span style="flex:1;height:1px;background:var(--line-soft);"></span></div>
+      <div id="googleLoginWrap" class="hidden" style="margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:8px;">
         <div id="gsiButtonHost"></div>
         <p style="font-size:11px;color:var(--fuji);margin:0;">Googleでログインすると、別の端末でも同じデータで遊べます</p>
+      </div>
+      <div id="fcLoginWrap" class="hidden" style="margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:8px;">
+        <a id="fcLoginBtn" class="google-btn" href="/auth/forcommunity/login" style="text-decoration:none;">forcommunity でログイン</a>
+        <p style="font-size:11px;color:var(--fuji);margin:0;">forcommunityでログインすると、別の端末でも同じデータで遊べます</p>
       </div>
       <p class="demo-note rv" style="--d:.5s">※同じ連に入った仲間と一緒にタップして戦えます。<br>対戦相手が見つからない時はライバル連（CPU）が登場します。</p>
     </div>
@@ -3545,6 +3549,12 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
   function initGoogleLogin(){
     if(typeof fetch!=='function') return;
     fetch('/auth-config').then(function(r){ return r.json(); }).then(function(cfg){
+      /* forcommunity でログイン（サーバーに FORCOMMUNITY_* が揃っている時だけ表示） */
+      if(cfg && cfg.forcommunity){
+        var fw=$('fcLoginWrap'), sep=$('loginOrSep');
+        if(fw) fw.classList.remove('hidden');
+        if(sep) sep.classList.remove('hidden');
+      }
       if(!cfg || !cfg.googleClientId) return;
       var s=document.createElement('script');
       s.src='https://accounts.google.com/gsi/client'; s.async=true; s.defer=true;
@@ -3566,6 +3576,8 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
           if(host) window.google.accounts.id.renderButton(host, { theme:'filled_blue', size:'large', shape:'pill', text:'signin_with', locale:'ja' });
           var wrap=$('googleLoginWrap');
           if(wrap) wrap.classList.remove('hidden');
+          var gsep=$('loginOrSep');
+          if(gsep) gsep.classList.remove('hidden');
         }catch(e){}
       };
       document.head.appendChild(s);
@@ -3657,7 +3669,24 @@ button:focus-visible,input:focus-visible{ outline:2px solid var(--kin-1); outlin
 
   try{ state.token=localStorage.getItem('mikoshiToken')||null; }catch(e){}
   try{ state.inviteTeamId=new URLSearchParams(location.search).get('team')||null; }catch(e){ state.inviteTeamId=null; }
-  NET.connect();
+  /* forcommunity でログインから戻った直後（#fc=1）: ログイン券は httpOnly cookie で接続時にサーバーへ届くので、
+   * ここでは「forcommunityで参加する」と伝えるだけ（URLの印はすぐ消す） */
+  var fcBack=false, fcErr=null;
+  try{
+    var hp=new URLSearchParams((location.hash||'').replace(/^#/,''));
+    fcBack=hp.get('fc')==='1'; fcErr=hp.get('fcerr');
+    if(hp.get('fc')||fcErr) history.replaceState(null, '', location.pathname+location.search);
+  }catch(e){}
+  if(fcErr) showToast('forcommunityログインが完了しませんでした。もう一度お試しください');
+  if(fcBack){
+    state.awaitingWelcome=true;
+    NET.connect(function(){ NET.send({ t:'register', fc:true, token:state.token }); });
+    setTimeout(function(){
+      if(state.awaitingWelcome){ state.awaitingWelcome=false; showToast('forcommunityログインに失敗しました…'); }
+    }, 8000);
+  } else {
+    NET.connect();
+  }
   buildTeamSelectScreen();
   enterTitleMode();
 

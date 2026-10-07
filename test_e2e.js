@@ -86,7 +86,11 @@ class Client {
   srv.stderr.on('data', d => process.stderr.write('[srv] ' + d));
   let srvOut = '';
   srv.stdout.on('data', d => { srvOut += d; });
-  await sleep(700);
+  // 起動待ち（固定待ちだと遅いPCで ECONNREFUSED になるため、/healthz が応答するまで待つ。最大10秒）
+  for (let i = 0; i < 100; i++) {
+    try { if ((await fetch('http://127.0.0.1:' + PORT + '/healthz')).ok) break; } catch (e) {}
+    await sleep(100);
+  }
 
   /* ========== シナリオ1: PvP（2チーム対戦） ========== */
   console.log('--- scenario 1: PvP ---');

@@ -54,6 +54,12 @@ docker run -p 3000:3000 -v $(pwd)/data:/app/data mikoshi
 | `CUE_LEAD` | 3600 | ラウンド開始→「せーの！」まで(ms) |
 | `RESULT_VIEW` / `BATTLE_VIEW` | 5600 / 7600 | 結果・対戦演出の表示時間(ms) |
 | `GOOGLE_CLIENT_ID` | （なし） | 設定するとログイン画面に「Googleでログイン」が表示される（下記手順） |
+| `FORCOMMUNITY_ISSUER` | （なし） | forcommunity の URL。`https://did-event.vercel.app` |
+| `FORCOMMUNITY_CLIENT_ID` | （なし） | forcommunity に登録したクライアントID（例 `mikoshi-battle`） |
+| `FORCOMMUNITY_CLIENT_SECRET` | （なし） | 登録時に1回だけ表示される秘密の値。**リポジトリに書かない**（Renderの Environment にだけ入れる） |
+| `FORCOMMUNITY_REDIRECT_URI` | （なし） | 戻り先。本番は `https://mikoshi-battle.onrender.com/auth/forcommunity/callback` |
+
+`FORCOMMUNITY_*` は**4つすべて**そろったときだけ「forcommunity でログイン」が有効になります。1つでも欠けるとボタンは出ず、`/auth/forcommunity/*` は 404 になります。`.env.example` に一覧があります。
 
 ## Googleログインを有効にする手順
 
@@ -70,6 +76,25 @@ docker run -p 3000:3000 -v $(pwd)/data:/app/data mikoshi
 7. ゲームのログイン画面に「Googleでログイン」ボタンが出れば完了
 
 ※ 注意: Render無料プランではデプロイのたびにプレイヤーデータがリセットされます（Googleログインでも同様）。データを恒久保存するには有料の永続ディスクか外部データベースが必要です。
+
+## forcommunity でログインを有効にする手順
+
+forcommunity（did-event）のアカウント（LINE / Google / メールなど、forcommunity で使っているログイン方法）でゲームに入れるようにします。ニックネーム参加・Googleログインはそのまま残ります。同じ forcommunity アカウントなら**別の端末でも同じコイン・衣装データ**で遊べます。
+
+1. forcommunity 側でこのゲームをクライアントとして登録する（did-event リポジトリで実行。担当者に依頼）
+   ```bash
+   npx tsx scripts/oidc-register-client.ts --name "せーの！神輿バトル" --client-id mikoshi-battle \
+     --redirect https://mikoshi-battle.onrender.com/auth/forcommunity/callback
+   ```
+   表示された `client_secret` は1回しか出ないので控える
+2. Renderのダッシュボード → 対象サービス → **Environment** に `FORCOMMUNITY_ISSUER` / `FORCOMMUNITY_CLIENT_ID` / `FORCOMMUNITY_CLIENT_SECRET` / `FORCOMMUNITY_REDIRECT_URI` の4つを設定 → 自動で再デプロイ
+3. ログイン画面に「forcommunity でログイン」ボタンが出れば完了
+
+仕組み（開発者向け）:
+- `GET /auth/forcommunity/login` → forcommunity へ（Authorization Code + PKCE S256、scope は `openid profile`）。state などの途中情報は署名付き・httpOnly・10分の cookie に入れる
+- `GET /auth/forcommunity/callback` → state を照合し、code を ID トークン（RS256）に交換・検証。成功したら署名付き・5分・1回限りの「ログイン券」を httpOnly cookie（Path=/ws）に入れて `/#fc=1` に戻す（券を URL に載せないのは、他人の券をリンクで踏ませる攻撃を防ぐため）。失敗時は `/#fcerr=...` に戻し、詳しい理由はサーバーのログにだけ出す
+- 券の cookie は `/ws` への接続時にブラウザが自動で送る。画面は WebSocket の `register` に `fc: true` を付けて送り、サーバーが券を検証して ID トークンの `sub` をプレイヤーに紐付ける（Googleログインの `googleSub` と同じ扱いで `fcSub`）。表示名は `name`。ニックネームで遊んでいた端末でログインすると、そのデータに紐付く
+- OIDC の処理は `lib/forcommunity-oidc-client.mjs`（forcommunity 提供の1ファイル、無改変）。つなぎ込みは `lib/forcommunity.js`
 
 ## 仕様（デモから継承・サーバーで強制）
 

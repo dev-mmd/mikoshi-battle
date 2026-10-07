@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
+const { mountForcommunity } = require('./lib/forcommunity');
 
 /* ================= ゲーム定数（検証済みデモから移植） ================= */
 const ROUNDS = 3, WINDOW_MS = 100;
@@ -137,7 +138,7 @@ function sanitizeName(s) {
 }
 function profileMsg(p) {
   return { t: 'welcome', pid: p.id, token: p.token, name: p.name,
-    coins: p.coins, owned: p.owned, equipped: p.equipped, wins: p.wins, google: !!p.googleSub };
+    coins: p.coins, owned: p.owned, equipped: p.equipped, wins: p.wins, google: !!p.googleSub, forcommunity: !!p.fcSub };
 }
 
 /* ================= ルーム / マッチ ================= */
@@ -415,7 +416,9 @@ function finishMatch(m) {
 const app = express();
 app.use((req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); next(); });
 app.get('/healthz', (req, res) => res.json({ ok: true, players: players.size, rooms: rooms.size, matches: matches.size }));
-app.get('/auth-config', (req, res) => res.json({ googleClientId: GOOGLE_CLIENT_ID || null }));
+/* forcommunity でログイン（FORCOMMUNITY_* の4つが揃ったときだけ有効。未設定ならルート自体が無く 404） */
+const FC = mountForcommunity(app);
+app.get('/auth-config', (req, res) => res.json({ googleClientId: GOOGLE_CLIENT_ID || null, forcommunity: FC.enabled }));
 
 /* ================= 外部連携API =================
  * 課金・ランキング・報酬システムなど外部サービスとの接続用。
@@ -443,7 +446,7 @@ app.get('/api/players/:id', requireApiKey, (req, res) => {
   const p = players.get(req.params.id);
   if (!p) return res.status(404).json({ error: 'player not found' });
   res.json({ id: p.id, name: p.name, coins: p.coins, wins: p.wins,
-    owned: p.owned, equipped: p.equipped, google: !!p.googleSub });
+    owned: p.owned, equipped: p.equipped, google: !!p.googleSub, forcommunity: !!p.fcSub });
 });
 /* コイン付与（要APIキー）: 外部の課金・特典システムからの付与入口。
  * ゲーム内ロジックからは呼ばれない（コインは勝利時のみ、のルールはゲーム内では不変） */
@@ -472,8 +475,9 @@ app.use(express.static(path.join(__dirname, 'public'), { index: 'index.html' }))
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 4096 });
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   ws.isAlive = true;
+  ws.fcTicket = FC.ticketFromRequest(req); // forcommunity ログイン直後なら券の cookie が付いてくる
   ws.on('pong', () => { ws.isAlive = true; });
   ws.on('message', (raw) => {
     let msg;
@@ -512,6 +516,28 @@ function handle(ws, msg) {
     case 'ping': return void ws.send(JSON.stringify({ t: 'pong', c: msg.c, s: Date.now() }));
 
     case 'register': {
+      // forcommunity ログイン（/auth/forcommunity/callback が cookie で渡した使い捨てのログイン券を、接続時に読み取り済み）
+      if (msg.fc) {
+        const f = FC.verifyTicket(ws.fcTicket);
+        ws.fcTicket = null;
+        if (!f) return void ws.send(JSON.stringify({ t: 'err', code: 'forcommunity', msg: 'forcommunityログインを確認できませんでした' }));
+        let p = null;
+        for (const q of players.values()) if (q.fcSub === f.sub) { p = q; break; }
+        if (!p && msg.token) {
+          // 既存のニックネームアカウントにforcommunityを紐付け（戦績・コインを引き継ぐ）
+          for (const q of players.values()) if (q.token === msg.token && !q.fcSub) { p = q; p.fcSub = f.sub; break; }
+        }
+        if (!p) {
+          const name = sanitizeName(msg.name) || sanitizeName(f.name) || 'プレイヤー';
+          p = { id: 'p' + crypto.randomBytes(6).toString('hex'), token: crypto.randomBytes(16).toString('hex'),
+            name, coins: 0, owned: [], equipped: [], wins: 0, fcSub: f.sub };
+          players.set(p.id, p);
+        } else if (msg.name && sanitizeName(msg.name)) {
+          p.name = sanitizeName(msg.name);
+        }
+        finishRegister(ws, p);
+        return;
+      }
       // Googleログイン（gtoken付き）は検証が非同期になるため分岐
       if (msg.gtoken) {
         verifyGoogleToken(msg.gtoken).then(g => {

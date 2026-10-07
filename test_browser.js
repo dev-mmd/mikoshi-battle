@@ -20,7 +20,11 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
     })
   });
   srv.stderr.on('data', d => process.stderr.write('[srv] ' + d));
-  await sleep(700);
+  // 起動待ち（固定待ちだと遅いPCで接続に失敗するため、/healthz が応答するまで待つ。最大10秒）
+  for (let i = 0; i < 100; i++) {
+    try { if ((await fetch('http://127.0.0.1:' + PORT + '/healthz')).ok) break; } catch (e) {}
+    await sleep(100);
+  }
 
   let html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
   const three = fs.readFileSync(require.resolve('three/build/three.min.js'), 'utf8');
