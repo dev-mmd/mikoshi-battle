@@ -1,6 +1,6 @@
 {
   "name": "seno-mikoshi-battle-online",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "main": "server.js",
   "scripts": {
@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "jsdom": "^29.1.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
