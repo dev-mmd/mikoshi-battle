@@ -1,5 +1,6 @@
 /* せーの！神輿バトル v2 — 舞台（シーン・カメラ・演出）
- * 会場は1回だけ作って使い回し、場面（title / match / viewer）ごとに登場人物とカメラを差し替える。
+ * 会場は1回だけ作って使い回し、場面（title / match / viewer / showcase）ごとに登場人物とカメラを差し替える。
+ * タイトルと連選び（showcase）は、神輿を画面の決まった範囲に収める（下の「構図」）。
  * 試合（arena）:
  *   ・自分の連(A)は手前(-Z)、相手の連(B)は奥(+Z)。担ぎ棒は進行方向(Z)に向く
  *   ・担ぎ手は「実際にタップした瞬間」に神輿を突き上げる → 揃えば真っ直ぐ跳ね、ばらけると傾いて揺れる
@@ -12,13 +13,14 @@
   var T = window.THREE;
   if(!T){ /* 3Dの部品が読み込めない環境（オフライン等）でも画面は動かす */
     MK.stage={ ready:false, mode:'off', init:function(){ return false; }, stop:function(){}, showTitle:function(){ return false; },
-      showMatch:function(){ return null; }, showViewer:function(){ return null; }, clock:function(){ return 0; }, selfTest:function(){ return []; } };
+      showMatch:function(){ return null; }, showViewer:function(){ return null; }, showShowcase:function(){ return null; },
+      clock:function(){ return 0; }, selfTest:function(){ return []; } };
     return;
   }
 
   var S = MK.stage = {
     ready:false, mode:'off', timeScale:1, slowmo:0,
-    scene:null, camera:null, venue:null, arena:null, title:null, viewer:null
+    scene:null, camera:null, venue:null, arena:null, title:null, viewer:null, showcase:null
   };
   var canvasEl=null, raf=null, last=0, clock=0;
   var camState={ pos:new T.Vector3(0,3,-10), look:new T.Vector3(0,1,0), fov:50, shake:0, handheld:1 };
@@ -70,6 +72,7 @@
     if(S.mode==='match' && S.arena) S.arena.update(dt, clock, real);
     else if(S.mode==='title' && S.title) S.title.update(dt, clock);
     else if(S.mode==='viewer' && S.viewer) S.viewer.update(dt, clock);
+    else if(S.mode==='showcase' && S.showcase) S.showcase.update(dt, clock);
     updateCamera(real, dt);
     G.updateParticles(dt);
     G.updateFx(real);
@@ -86,6 +89,7 @@
     if(raf){ cancelAnimationFrame(raf); raf=null; }
     if(canvasEl) canvasEl.classList.remove('show');
     S.mode='off';
+    setShot(null);
   };
   S.setCamera = function(pos, look, fov, lambda, snap){
     camTarget.pos.copy(pos); camTarget.look.copy(look);
@@ -112,13 +116,173 @@
       camState.pos.z+Math.cos(t*0.7)*hh*0.6);
     cam.lookAt(camState.look.x+(Math.random()-0.5)*sh*0.4, camState.look.y+(Math.random()-0.5)*sh*0.4, camState.look.z);
     if(Math.abs(cam.fov-camState.fov)>0.01){ cam.fov=camState.fov; cam.updateProjectionMatrix(); }
+    applyShift(cam, shotNow, G.size.w, G.size.h);
   }
   function clearActors(){
-    ['arena','title','viewer'].forEach(function(k){ if(S[k]){ S[k].dispose(); S[k]=null; } });
+    ['arena','title','viewer','showcase'].forEach(function(k){ if(S[k]){ S[k].dispose(); S[k]=null; } });
     Object.keys(fxLayer).forEach(function(k){ fxLayer[k] && fxLayer[k].clear(); });
     G.fxState.fade=0; G.fxState.flash=0;
     S.slowmo=0; camState.shake=0;
+    setShot(null);   /* ずらした見え方は場面を変えるたびに必ず元に戻す（試合・着せ替えは画面の中央で写す） */
   }
+
+  /* ================= 構図（神輿を画面のどこに、どの大きさで置くか） ================= */
+  /* 置き場所は画面の割合（左上が0・右下が1）。取り決めの範囲（タイトル: 横38〜96%・縦22〜72% /
+   * 連選び: 縦6〜40%）より少し内側を狙う。画面の中心をずらして写し（setViewOffset）、神輿＋担ぎ手の外接箱の写る範囲が
+   * 置き場所の真ん中に来るようにする。
+   * 回り込みは「神輿がゆっくり向きを変える」ことで見せる（カメラを大きく回すと結界の縄 x=±2.55 の外に出てしまう）。
+   *   yaw: 神輿の正面（鳳凰の向き）がカメラから左右へ振れる角度（+で画面の左へ向く）。yaw±yawAmp の間をゆっくり往復
+   *   az / elev: カメラの方位（+で左寄り）と見下ろす角度。わずかに揺らして奥行きを出す
+   *   rmYaw: 「動きを減らす」設定のときの止めた向き
+   * 距離は「この揺れの範囲のどの組み合わせでも外接箱が置き場所に収まる最短距離」を画面の縦横比ごとに計算する */
+  var FRAMES={
+    title:{ x0:0.40, x1:0.94, y0:0.24, y1:0.70, fov:50, z:1.0,
+      yaw:0.2, yawAmp:0.16, yawSpd:0.2, rmYaw:0.2, az:0.06, azAmp:0.035, elev:0.13, elevAmp:0.02 },
+    /* 見下ろしは控えめに: カメラが頭上の提灯の綱（z=-9.5・提灯の下端 y≈4.75）より十分低くなるように */
+    showcase:{ x0:0.05, x1:0.95, y0:0.075, y1:0.385, fov:50, z:2.0,
+      yaw:0, yawAmp:0.70, yawSpd:0.22, rmYaw:0.45, az:0.04, azAmp:0.02, elev:0.15, elevAmp:0.015 }
+  };
+  S.FRAMES=FRAMES;
+  var shotNow=null;   /* いまの写し方 { f, sx, sy }（注視点を画面の (sx, sy) に写す）。null なら画面の中央で写す */
+  function setShot(sh){ shotNow=sh||null; if(S.camera) applyShift(S.camera, shotNow, G.size.w, G.size.h); }
+  /* 画面の中心をずらす。値が変わったときだけ計算し直す */
+  function applyShift(cam, sh, w, h){
+    if(!sh){ if(cam.view && cam.view.enabled) cam.clearViewOffset(); return; }
+    var ox=(0.5-sh.sx)*w, oy=(0.5-sh.sy)*h, v=cam.view;
+    if(v && v.enabled && v.fullWidth===w && v.fullHeight===h && v.offsetX===ox && v.offsetY===oy && v.width===w && v.height===h) return;
+    cam.setViewOffset(w, h, ox, oy, w, h);
+  }
+  /* 担ぎ手つきの神輿の外接箱（連の座標・向き0で測る）。光のにじみ（Sprite）は外枠に入れない。
+   * 担ぎ手は骨格を曲げる前の立ち姿で測る。突き上げ・跳ねの分だけ上に、揺れの分だけ前後左右に余白を足す */
+  function teamBox(tm){
+    var g=tm.group, pos=g.position.clone(), ry=g.rotation.y, box=new T.Box3(), tmp=new T.Box3();
+    g.position.set(0,0,0); g.rotation.y=0; g.updateMatrixWorld(true);
+    g.traverse(function(o){
+      if(!o.isMesh || !o.geometry) return;
+      if(!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      tmp.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); box.union(tmp);
+    });
+    g.position.copy(pos); g.rotation.y=ry; g.updateMatrixWorld(true);
+    box.min.x-=0.06; box.max.x+=0.06; box.min.z-=0.06; box.max.z+=0.06;
+    box.min.y=Math.min(0, box.min.y); box.max.y+=0.28;
+    return box;
+  }
+  /* el 秒目の向きとカメラの角度（実際の場面と確認用の計算で同じものを使う） */
+  function motionAt(f, el, rm, out){
+    out.yaw=rm?f.rmYaw:f.yaw+f.yawAmp*Math.sin(el*f.yawSpd);
+    out.az=rm?f.az:f.az+f.azAmp*Math.sin(el*0.11+1.3);
+    out.elev=rm?f.elev:f.elev+f.elevAmp*Math.sin(el*0.17+0.4);
+    return out;
+  }
+  /* 揺れの範囲の端と途中（向き9通り×カメラの方位2×見下ろし2＋止めた向き） */
+  function motionSamples(f){
+    var list=[], i, a, e;
+    for(i=0;i<=8;i++) for(a=-1;a<=1;a+=2) for(e=-1;e<=1;e+=2)
+      list.push({ yaw:f.yaw+f.yawAmp*(i/4-1), az:f.az+f.azAmp*a, elev:f.elev+f.elevAmp*e });
+    list.push({ yaw:f.rmYaw, az:f.az, elev:f.elev });
+    return list;
+  }
+  /* カメラの位置と注視点: 神輿が向きを変える軸（連の位置）の上、外接箱の中ほどの高さを見る */
+  function shotPose(gpos, box, az, elev, d, pos, look){
+    look.set(gpos.x, (box.min.y+box.max.y)/2, gpos.z);
+    pos.set(look.x+Math.sin(az)*Math.cos(elev)*d, look.y+Math.sin(elev)*d, look.z-Math.cos(az)*Math.cos(elev)*d);
+  }
+  var _fc=new T.PerspectiveCamera(50, 1, 0.1, 200), _fp=new T.Vector3(), _fl=new T.Vector3(), _fr={}, _fm={},
+      _corner=new T.Vector3(), _gm=new T.Matrix4(), _gq=new T.Quaternion(), _up=new T.Vector3(0,1,0), _unit=new T.Vector3(1,1,1);
+  function aimCam(cam, sh, pos, look, w, h){
+    cam.fov=sh.f.fov; cam.aspect=w/h; cam.position.copy(pos); cam.lookAt(look); cam.updateMatrixWorld();
+    cam.updateProjectionMatrix(); applyShift(cam, sh, w, h);
+  }
+  /* 外接箱の8つの角を画面に写したときの範囲（画面の割合）。カメラの後ろに回る角があれば null */
+  function boxOnScreen(box, gpos, rotY, cam, out){
+    _gm.compose(gpos, _gq.setFromAxisAngle(_up, rotY), _unit);
+    out.x0=Infinity; out.y0=Infinity; out.x1=-Infinity; out.y1=-Infinity;
+    for(var i=0;i<8;i++){
+      _corner.set(i&1?box.max.x:box.min.x, i&2?box.max.y:box.min.y, i&4?box.max.z:box.min.z).applyMatrix4(_gm);
+      _corner.applyMatrix4(cam.matrixWorldInverse);
+      if(_corner.z>-cam.near) return null;
+      _corner.applyMatrix4(cam.projectionMatrix);
+      var x=_corner.x*0.5+0.5, y=0.5-_corner.y*0.5;
+      if(x<out.x0) out.x0=x; if(x>out.x1) out.x1=x; if(y<out.y0) out.y0=y; if(y>out.y1) out.y1=y;
+    }
+    return out;
+  }
+  function shotBounds(sh, box, gpos, m, d, w, h, out){
+    shotPose(gpos, box, m.az, m.elev, d, _fp, _fl);
+    aimCam(_fc, sh, _fp, _fl, w, h);
+    return boxOnScreen(box, gpos, Math.PI/2-m.yaw, _fc, out);
+  }
+  /* 揺れの範囲のどの組み合わせでも置き場所に収まる最短の距離 */
+  function fitDistance(sh, box, gpos, w, h, list){
+    var f=sh.f, lo=1.5, hi=60;
+    function fitsAll(d){
+      for(var i=0;i<list.length;i++){
+        var r=shotBounds(sh, box, gpos, list[i], d, w, h, _fr);
+        if(!r || r.x0<f.x0 || r.x1>f.x1 || r.y0<f.y0 || r.y1>f.y1) return false;
+      }
+      return true;
+    }
+    if(!fitsAll(hi)) return hi;
+    for(var k=0;k<20;k++){ var mid=(lo+hi)/2; if(fitsAll(mid)) hi=mid; else lo=mid; }
+    return hi;
+  }
+  function unionBounds(sh, box, gpos, list, d, w, h, out){
+    out.x0=Infinity; out.y0=Infinity; out.x1=-Infinity; out.y1=-Infinity;
+    for(var i=0;i<list.length;i++){
+      var r=shotBounds(sh, box, gpos, list[i], d, w, h, _fr); if(!r) return null;
+      out.x0=Math.min(out.x0,r.x0); out.x1=Math.max(out.x1,r.x1); out.y0=Math.min(out.y0,r.y0); out.y1=Math.max(out.y1,r.y1);
+    }
+    return out;
+  }
+  /* 距離と画面のずらし方を決める。斜めから見ると手前の角が大きく写って片寄るので、
+   * 揺れの全範囲で写る範囲の真ん中が置き場所の真ん中に来るまで、ずらし→距離の計算し直しを繰り返す */
+  function fitShot(f, box, gpos, w, h){
+    var list=motionSamples(f), sh={ f:f, sx:(f.x0+f.x1)/2, sy:(f.y0+f.y1)/2, d:0 }, u={}, cx=sh.sx, cy=sh.sy;
+    for(var it=0; it<4; it++){
+      sh.d=fitDistance(sh, box, gpos, w, h, list);
+      if(!unionBounds(sh, box, gpos, list, sh.d, w, h, u)) break;
+      var ex=cx-(u.x0+u.x1)/2, ey=cy-(u.y0+u.y1)/2;
+      if(Math.abs(ex)<0.002 && Math.abs(ey)<0.002) break;
+      sh.sx=U.clamp(sh.sx+ex, f.x0, f.x1); sh.sy=U.clamp(sh.sy+ey, f.y0, f.y1);
+      if(it===3) sh.d=fitDistance(sh, box, gpos, w, h, list);
+    }
+    return sh;
+  }
+  /* 陳列の場面（タイトル・連選び）共通: 毎コマ、神輿の向きとカメラを決める。
+   * 画面の大きさ・様式が変わったら距離とずらし方を計算し直し、カメラとずらし方はなめらかに移す */
+  function stageShot(actor, f, el, dt, snap){
+    var w=G.size.w||1, h=G.size.h||1, tm=actor.team;
+    if(!actor.fit || actor.fitW!==w || actor.fitH!==h){ actor.fitW=w; actor.fitH=h; actor.fit=fitShot(f, actor.box, tm.group.position, w, h); }
+    var fit=actor.fit, v=actor.view;
+    if(!v || snap){ v=actor.view={ f:f, sx:fit.sx, sy:fit.sy }; }
+    else { v.sx=U.damp(v.sx, fit.sx, 2.6, dt); v.sy=U.damp(v.sy, fit.sy, 2.6, dt); }
+    var m=motionAt(f, el, MK.reduceMotion, _fm);
+    tm.group.rotation.y=Math.PI/2-m.yaw;
+    shotPose(tm.group.position, actor.box, m.az, m.elev, fit.d, _fp, _fl);
+    S.setCamera(_fp, _fl, f.fov, 2.2, snap);
+    setShot(v);
+  }
+  /* 確認用: 画面の大きさ w×h で、その構図の神輿が画面のどこに写るかを、揺れの全範囲（60秒分。動きを減らす設定も）で調べる。
+   * 実際の場面と同じ計算を使う。WebGL が無くても計算できる（node でも確かめられる）。kind: 'title' | 'showcase' */
+  S.frameCheck=function(kind, w, h, variant, level){
+    var f=FRAMES[kind]; if(!f) return null;
+    var tm=new Team({ dir:-1, name:kind==='title'?'祭':'試験連', variant:variant||'classic', level:level===undefined?3:level, members:[] });
+    tm.z=f.z; tm.group.position.z=f.z;
+    var box=teamBox(tm), sh=fitShot(f, box, tm.group.position, w, h);
+    var all={ x0:Infinity, y0:Infinity, x1:-Infinity, y1:-Infinity }, camX=0, camMinZ=Infinity, camMaxY=0, bad=0, m={}, r={};
+    [false,true].forEach(function(rm){
+      for(var el=0; el<=60; el+=0.25){
+        motionAt(f, el, rm, m);
+        if(!shotBounds(sh, box, tm.group.position, m, sh.d, w, h, r)){ bad++; continue; }
+        all.x0=Math.min(all.x0,r.x0); all.x1=Math.max(all.x1,r.x1); all.y0=Math.min(all.y0,r.y0); all.y1=Math.max(all.y1,r.y1);
+        camX=Math.max(camX, Math.abs(_fp.x)); camMinZ=Math.min(camMinZ, _fp.z); camMaxY=Math.max(camMaxY, _fp.y);
+      }
+    });
+    G.disposeTree(tm.group); G.disposeTree(tm.shadows);
+    return { kind:kind, size:w+'x'+h, variant:tm.mk.variant, dist:+sh.d.toFixed(2), shift:{ x:sh.sx, y:sh.sy },
+      box:{ min:box.min.toArray(), max:box.max.toArray() }, bounds:all, center:{ x:(all.x0+all.x1)/2, y:(all.y0+all.y1)/2 },
+      camMaxAbsX:camX, camMinZ:camMinZ, camMaxY:camMaxY, behind:bad };
+  };
   /* 使い回しの計算用（毎コマの new を避ける） */
   var _q=new T.Quaternion(), _one=new T.Vector3(1,1,1), _p=new T.Vector3(), _col=new T.Color(), _inv=new T.Matrix4(),
       _grip=new T.Vector3(), _cp=new T.Vector3(), _cl=new T.Vector3();
@@ -558,14 +722,19 @@
   Arena.prototype.dispose=function(){ this.A.removeFrom(S.scene); this.B.removeFrom(S.scene); };
 
   /* ================= タイトル（担ぎ手が練り歩く神輿） ================= */
+  /* 神輿は画面の右寄り（横38〜96%・縦22〜72%）。左側は画面側の幟（のぼり）の場所なので空けておく。
+   * 正面（鳳凰）をこちらへ向け、少し左（幟の方）へ向きながらゆっくり振れる */
   function Title(){
-    this.team=new Team({ dir:1, name:'祭', variant:'classic', level:3, members:[] });
+    var f=FRAMES.title;
+    this.team=new Team({ dir:-1, name:'祭', variant:'classic', level:3, members:[] });
     this.team.addTo(S.scene);
-    this.team.z=-1;
-    this.team.group.position.z=-1;
+    this.team.z=f.z;
+    this.team.group.position.z=f.z;
+    this.box=teamBox(this.team);
     this.t0=clock; this.nextBeat=0.4; this.beat=0;
     S.venue.setHype(0.35); S.venue.fireworkRate=0.5;
   }
+  Title.prototype.shot=function(dt, snap){ stageShot(this, FRAMES.title, clock-this.t0, dt, snap); };
   Title.prototype.update=function(dt, t){
     var tm=this.team, el=t-this.t0;
     /* 自動の練り: 105BPM で掛け声、たまに揃い・たまにばらける */
@@ -578,12 +747,65 @@
     }
     tm.energy=0.5+Math.sin(el*0.8)*0.3;
     var phs=this.nextBeat>0?1-this.nextBeat/0.57:0;
+    /* 向きとカメラ（構図の範囲に収まる距離。カメラは参道の中ほど＝結界の縄の内側） */
+    this.shot(dt, false);
     tm.update(dt, t, { active:true, phase:phs, beatF:this.beat-1+phs });
-    /* 楕円で回る: 左右は結界の縄（x=±2.55）の内側に収め、提灯棚や観客に入り込まない */
-    var ang=el*0.16+0.6, R=7.4;
-    S.setCamera(new T.Vector3(Math.sin(ang)*2.4, 2.3+Math.sin(el*0.3)*0.3, tm.z-Math.cos(ang)*R), new T.Vector3(0, 1.2, tm.z), 50, 2);
   };
   Title.prototype.dispose=function(){ this.team.removeFrom(S.scene); };
+
+  /* ================= 連選び（選んだ様式の神輿を見せる） ================= */
+  /* 神輿は画面の上部（縦6〜40%・左右の中央）。担ぎ手はゆっくり足踏みし、ときどき掛け声で揃って突き上げる。
+   * 神輿は斜め前から見せ、左右へ約40度ずつゆっくり向きを変える（動きを減らす設定では向きを止め、突き上げもしない） */
+  function Showcase(o){
+    this.t0=clock; this.nextCall=1.6; this.pendingO=null;
+    this.build(o||{});
+    S.venue.setHype(0.25); S.venue.fireworkRate=0.3;
+  }
+  Showcase.prototype.build=function(o){
+    var f=FRAMES.showcase, old=this.team;
+    this.o={ variant:o.variant||'classic', level:Math.max(0, +o.level||0), teamName:o.teamName||'祭' };
+    var tm=this.team=new Team({ dir:-1, name:this.o.teamName, variant:this.o.variant, level:this.o.level, members:[], accent:0xd8392a });
+    tm.z=f.z; tm.group.position.z=f.z;
+    tm.walk=0.13;   /* 小さな足踏み（その場から動かない） */
+    this.box=teamBox(tm);
+    this.fit=null;   /* 様式で大きさが違うので距離とずらし方を計算し直す（カメラはなめらかに寄る・引く） */
+    if(old){
+      /* 足踏みの調子を引き継いで、差し替えた瞬間に動きが途切れないようにする */
+      tm.carriers.forEach(function(c, i){ var oc=old.carriers[i]; if(oc) c.stepPh=oc.stepPh; });
+      tm.group.rotation.y=old.group.rotation.y;
+      old.removeFrom(S.scene);
+    }
+    tm.addTo(S.scene);
+  };
+  /* 様式・格・連の名前を変える。様式か格が変わったらすぐ作り直す。名前だけの変更（入力中）は少し待ってからまとめて */
+  Showcase.prototype.setVariant=function(variant, level, teamName){
+    /* 片付け済みの場面には神輿を足さない（いま連選びを表示中なら、そちらへ回す） */
+    if(this.dead) return (S.mode==='showcase' && S.showcase && S.showcase!==this) ? S.showcase.setVariant(variant, level, teamName) : this;
+    var cur=this.pendingO||this.o;
+    var o={ variant:variant||cur.variant, level:(level===undefined||level===null)?cur.level:Math.max(0, +level||0), teamName:teamName||cur.teamName };
+    if(o.variant===this.o.variant && o.level===this.o.level && o.teamName===this.o.teamName){ this.pendingO=null; return this; }
+    if(o.variant!==this.o.variant || o.level!==this.o.level){ this.pendingO=null; this.build(o); }
+    else { this.pendingO=o; this.pendingAt=performance.now()+450; }
+    return this;
+  };
+  Showcase.prototype.shot=function(dt, snap){ stageShot(this, FRAMES.showcase, clock-this.t0, dt, snap); };
+  Showcase.prototype.update=function(dt, t){
+    if(this.pendingO && performance.now()>=this.pendingAt){ var po=this.pendingO; this.pendingO=null; this.build(po); }
+    var tm=this.team, el=t-this.t0;
+    /* 掛け声: 3〜4.6秒ごとに「わっしょい、わっしょい」と2回揃って突き上げる */
+    this.nextCall-=dt;
+    if(this.nextCall<=0){
+      this.nextCall=3+Math.random()*1.6;
+      if(!MK.reduceMotion){
+        var now=performance.now();
+        for(var k=0;k<2;k++) tm.carriers.forEach(function(c){ tm.pending.push({ slot:c.slot, t:now+k*640+Math.max(0,U.randomNormal(0.02,0.03))*1000 }); });
+      }
+    }
+    tm.energy=0.35+Math.sin(el*0.7)*0.12;
+    this.shot(dt, false);
+    tm.update(dt, t, null);
+  };
+  Showcase.prototype.dispose=function(){ this.dead=true; this.pendingO=null; this.team.removeFrom(S.scene); };
 
   /* ================= 着せ替え（自分のアバターを大きく） ================= */
   function Viewer(o){
@@ -630,9 +852,19 @@
     if(!S.ready) return false;
     clearActors();
     S.title=new Title(); S.mode='title';
-    var ang=0.6, R=7.4;
-    S.setCamera(new T.Vector3(Math.sin(ang)*2.4, 2.3, -1-Math.cos(ang)*R), new T.Vector3(0,1.45,-1), 50, 2, true);
+    S.title.shot(0, true);
     start(); return true;
+  };
+  /* 連選び: opts = { variant, level, teamName }。表示中にもう一度呼ばれたら作り直さず差し替えるだけ（ちらつかせない）。
+   * 戻り値の setVariant(variant, level, teamName) でも差し替えられる */
+  S.showShowcase=function(opts){
+    if(!S.ready) return null;
+    opts=opts||{};
+    if(S.mode==='showcase' && S.showcase){ S.showcase.setVariant(opts.variant, opts.level, opts.teamName); start(); return S.showcase; }
+    clearActors();
+    S.showcase=new Showcase(opts); S.mode='showcase';
+    S.showcase.shot(0, true);
+    start(); return S.showcase;
   };
   S.showMatch=function(opts){
     if(!S.ready) return null;

@@ -10,10 +10,13 @@
   --sky-1:#38366a; --sky-2:#292750; --sky-3:#1b1a38;
   --shu:#d8492c; --shu-deep:#a82c16; --shu-hi:#ff6a42;
   --kin-1:#f9e6a0; --kin-2:#dcae48; --kin-3:#94701f;
-  --kinari:#f7f0de; --fuji:#b7b5d2; --ai:#5b7fd6;
+  /* 補足の文字（藤色）は、暗い下地の上で 4.5:1 以上になる明るさにしている */
+  --kinari:#f7f0de; --fuji:#c9c7e1; --text-link:#dedcf2; --ai:#5b7fd6;
   --line:rgba(224,182,84,.34); --line-soft:rgba(224,182,84,.16); --line-strong:rgba(224,182,84,.62);
   --color-you:#ffb39a; --color-enemy:#a9c4ff;
-  --panel:rgba(32,29,62,.74); --panel-hi:rgba(44,40,84,.74); --scrim:rgba(17,14,36,.62);
+  /* 3Dの上に置く面は透けすぎない濃さにする（明るい提灯が後ろに来ても文字が読めるように） */
+  --panel:rgba(32,29,62,.9); --panel-hi:rgba(44,40,84,.9); --scrim:rgba(17,14,36,.82);
+  --sheet:#191636; --sheet-hi:#231f4a; --dim:rgba(14,10,30,.86);
   --radius:16px;
   --serif:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
   --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
@@ -47,7 +50,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{ outline:2px s
 .crest-eyebrow{ display:flex; align-items:center; justify-content:center; gap:12px; margin:0 0 10px; }
 .crest-eyebrow::before,.crest-eyebrow::after{ content:''; height:1px; width:38px; background:linear-gradient(90deg,transparent,var(--kin-2)); }
 .crest-eyebrow::after{ background:linear-gradient(90deg,var(--kin-2),transparent); }
-.crest-eyebrow span{ font-family:var(--serif); font-size:13px; letter-spacing:.36em; color:var(--kin-1); font-weight:600; text-indent:.36em; }
+.crest-eyebrow span{ font-family:var(--serif); font-size:14px; letter-spacing:.32em; color:var(--kin-1); font-weight:700; text-indent:.32em; }
 .display{ font-family:var(--serif); font-weight:800; letter-spacing:.06em; line-height:1.22; margin:0; text-align:center; }
 .gold-text{ background:linear-gradient(168deg,#fff3c4 8%,var(--kin-1) 26%,var(--kin-2) 52%,#b3892a 66%,#f6dc8a 90%); -webkit-background-clip:text; background-clip:text; color:transparent;
   filter:drop-shadow(0 2px 6px rgba(30,16,2,.45)); }
@@ -67,11 +70,13 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{ outline:2px s
 .btn-lacquer{ background:linear-gradient(172deg,var(--panel-hi),var(--panel)); color:var(--kinari); border:1px solid var(--line); border-radius:14px; font-weight:700; font-size:15px; padding:14px 20px; box-shadow:0 10px 24px rgba(10,6,24,.42); backdrop-filter:blur(6px); }
 .btn-lacquer:active{ transform:translateY(1px); }
 .btn-large{ width:100%; }
-.btn-text{ background:none; border:none; color:var(--fuji); text-decoration:underline; text-underline-offset:3px; font-size:14px; padding:12px 16px; min-height:44px; }
+.btn-text{ background:none; border:none; color:var(--text-link); text-decoration:underline; text-underline-offset:3px; font-size:14px; padding:12px 16px; min-height:44px; }
 .btn-primary{ border:none; border-radius:10px; font-weight:800; color:#3a2506; background:linear-gradient(172deg,#f6dd8e,var(--kin-2)); box-shadow:0 4px 12px rgba(10,6,24,.4); }
 .center-col{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:10px; }
 .panel{ background:linear-gradient(176deg, var(--panel-hi), var(--panel)); border:1px solid var(--line); outline:1px solid var(--line-soft); outline-offset:3px;
   border-radius:var(--radius); padding:16px; box-shadow:0 18px 40px rgba(10,6,24,.45); backdrop-filter:blur(8px); }
+/* 3Dの上に文字を直に載せない画面（参加登録・QR・広告）は、後ろの3Dを暗い幕で覆う */
+.screen-dim{ position:fixed; inset:0; z-index:-1; pointer-events:none; background:var(--dim); }
 
 /* ---------------- 幕の切り替え ---------------- */
 #wipe{ position:fixed; inset:0; z-index:80; pointer-events:none; }
@@ -85,19 +90,74 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{ outline:2px s
 #wipe.opening .wipe-panel{ transition:transform .45s cubic-bezier(.7,0,.3,1) .05s; }
 #wipe.opening .wipe-l{ transform:translateX(-102%); } #wipe.opening .wipe-r{ transform:translateX(102%); }
 
-/* ---------------- タイトル ---------------- */
-#screen-title{ justify-content:flex-start; }
+/* ---------------- タイトル（祭りの幟） ----------------
+ * 左の 0〜34% に朱の幟、右の空きに3Dの神輿（mk-stage.js が構図を合わせる）、下に暗い台とボタン。
+ * 幟は上から降りて広がり、文句とボタンは少し遅れて出る（動きを減らす設定では止まった形で出る） */
+#screen-title{ justify-content:flex-start; padding-bottom:0; }
 .title-scrim{ position:fixed; inset:0; pointer-events:none; z-index:0;
-  background:linear-gradient(180deg, rgba(18,12,40,.72) 0%, rgba(18,12,40,.2) 30%, transparent 48%, transparent 62%, rgba(12,8,28,.82) 100%); }
-.title-block{ padding-top:6vh; display:flex; flex-direction:column; align-items:center; position:relative; z-index:2; }
-.title-crest{ width:62px; height:62px; margin:0 auto 12px; filter:drop-shadow(0 0 22px rgba(224,182,84,.45)); }
-.title-main{ font-size:clamp(40px,12.5vw,58px); position:relative; }
-.title-stamp{ position:absolute; right:-6px; top:-8px; width:40px; height:40px; background:var(--shu); border-radius:8px; display:flex; align-items:center; justify-content:center;
-  font-family:var(--serif); font-weight:800; color:#fff2e0; font-size:20px; transform:rotate(8deg); box-shadow:0 8px 20px rgba(120,26,10,.5); }
-.title-sub{ font-family:var(--serif); text-align:center; font-size:15px; letter-spacing:.3em; text-indent:.3em; margin:14px 0 0; text-shadow:0 1px 10px rgba(12,6,30,.85); }
-.title-bottom{ margin-top:auto; position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:10px; }
-.title-bottom .btn-gold,.title-bottom .btn-lacquer{ max-width:300px; }
-.title-foot{ font-size:13px; color:var(--fuji); letter-spacing:.2em; margin-top:2px; }
+  background:linear-gradient(180deg, rgba(14,10,32,.6) 0%, rgba(14,10,32,0) 21%, rgba(14,10,32,0) 64%, rgba(10,7,24,.72) 100%); }
+.nobori{ position:absolute; z-index:2; left:3.5%; width:29%;
+  top:calc(max(22px, env(safe-area-inset-top)) + 48px); bottom:36vh; bottom:36dvh;
+  display:flex; flex-direction:column; animation:nobori-drop .8s cubic-bezier(.16,.84,.3,1) both; }
+@keyframes nobori-drop{ from{ opacity:0; transform:translateY(-36px); } to{ opacity:1; transform:none; } }
+/* 黒漆の竿と金の金具 */
+.nobori-pole{ position:relative; flex:0 0 12px; margin:0 -9px; border-radius:6px;
+  background:linear-gradient(180deg,#4a4258 0%,#17121f 45%,#060409 100%); box-shadow:0 4px 8px rgba(0,0,0,.5); }
+.nobori-pole::before,.nobori-pole::after{ content:''; position:absolute; top:-3px; bottom:-3px; width:11px; border-radius:3px;
+  background:linear-gradient(180deg,#fff0b8 0%,var(--kin-2) 45%,var(--kin-3) 100%); box-shadow:0 0 0 1px rgba(40,24,4,.6); }
+.nobori-pole::before{ left:-4px; } .nobori-pole::after{ right:-4px; }
+/* 布: 端の陰・わずかな光沢・織り目・縫い目・裾の房 */
+.nobori-cloth{ position:relative; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:space-between;
+  padding:14px 6px 12px; border-top:5px solid #6e1709;
+  background:
+    linear-gradient(90deg, rgba(30,4,0,.34), rgba(30,4,0,0) 16%, rgba(255,214,170,.07) 46%, rgba(30,4,0,0) 70%, rgba(30,4,0,.38)),
+    linear-gradient(180deg, rgba(30,4,0,.2), rgba(30,4,0,0) 22%, rgba(30,4,0,0) 70%, rgba(30,4,0,.28)),
+    repeating-linear-gradient(0deg, rgba(255,230,200,.035) 0 1px, transparent 1px 3px),
+    #ad2c17;
+  box-shadow:0 18px 34px rgba(8,4,18,.55); transform-origin:top center;
+  animation:nobori-unfurl .9s .12s cubic-bezier(.2,.75,.25,1) both; }
+@keyframes nobori-unfurl{ from{ clip-path:inset(0 -24px 100% -24px); } to{ clip-path:inset(0 -24px -40px -24px); } }
+.nobori-cloth::before{ content:''; position:absolute; inset:6px 5px 7px; border-left:1.5px dashed rgba(255,226,190,.42); border-right:1.5px dashed rgba(255,226,190,.42); pointer-events:none; }
+.nobori-cloth::after{ content:''; position:absolute; left:4px; right:4px; bottom:-15px; height:15px; pointer-events:none;
+  background:repeating-linear-gradient(90deg, var(--kin-2) 0 2px, transparent 2px 5px);
+  -webkit-mask-image:linear-gradient(180deg,#000 55%,transparent); mask-image:linear-gradient(180deg,#000 55%,transparent); }
+.nobori-crest{ flex:0 0 auto; width:34px; height:34px; filter:drop-shadow(0 1px 0 rgba(40,6,0,.7)); }
+/* 題字: 縦書き・明朝・黒い縁取り。幅320でも幟の中に収まる大きさに抑える */
+.nobori-title{ writing-mode:vertical-rl; margin:0; font-family:var(--serif); font-weight:800; line-height:1.14; letter-spacing:.04em;
+  font-size:clamp(28px, min(11.5vw, 5.6vh), 54px); color:#fff6e2;
+  text-shadow:-2px 0 0 #1d0803, 2px 0 0 #1d0803, 0 -2px 0 #1d0803, 0 2px 0 #1d0803, -1.5px -1.5px 0 #1d0803, 1.5px -1.5px 0 #1d0803, -1.5px 1.5px 0 #1d0803, 1.5px 1.5px 0 #1d0803, 3px 5px 10px rgba(20,4,0,.55); }
+.nobori-title .nb-sub{ display:block; font-size:.62em; }
+.nobori-title .nb-main{ display:block; padding-top:.42em; color:var(--kin-1); }
+/* 朱の落款（白文の印） */
+.nobori-seal{ flex:0 0 auto; width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:4px;
+  background:#e04a2c; border:2px solid #fff1dc; box-shadow:0 0 0 1.5px rgba(40,6,0,.55), 0 4px 10px rgba(30,4,0,.4);
+  font-family:var(--serif); font-weight:800; font-size:19px; color:#fff1dc; transform:rotate(-4deg); }
+/* 幟の横（右上）の文句。3Dにかからない位置に、下地つきで置く */
+.title-tagline{ position:absolute; z-index:2; left:38%; right:4%; top:calc(max(22px, env(safe-area-inset-top)) + 46px);
+  padding:10px 14px 9px; border-left:2px solid var(--kin-2); border-radius:0 12px 12px 0; background:rgba(14,10,30,.78);
+  animation:tagline-in .6s .75s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes tagline-in{ from{ opacity:0; transform:translateX(12px); } to{ opacity:1; transform:none; } }
+.title-sub{ font-family:var(--serif); font-size:17px; font-weight:700; line-height:1.55; letter-spacing:.1em; margin:0; color:var(--kinari); }
+.title-foot{ font-size:12px; color:var(--fuji); letter-spacing:.08em; margin:4px 0 0; }
+.title-foot span{ display:inline-block; } /* 狭い幅では「・」の所で折り返す */
+/* 下の暗い台: 主（参加）→ 副（稽古）→ 小さめの「設定」「遊び方」 */
+.title-bottom{ margin:auto -20px 0; position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:10px;
+  padding:30px 20px max(18px, env(safe-area-inset-bottom));
+  background:linear-gradient(180deg, rgba(12,8,28,0) 0, rgba(12,8,28,.9) 30px, #0f0b24 100%);
+  animation:sheet-up .55s .85s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes sheet-up{ from{ opacity:0; transform:translateY(28px); } to{ opacity:1; transform:none; } }
+.title-bottom .btn-gold,.title-bottom .btn-lacquer{ max-width:320px; }
+.title-links{ display:flex; gap:10px; justify-content:center; }
+.btn-small{ min-height:44px; min-width:96px; padding:0 18px; border-radius:22px; border:1px solid var(--line-strong); background:rgba(255,255,255,.05);
+  color:var(--kinari); font-size:14px; font-weight:700; letter-spacing:.06em; }
+.btn-small:active{ transform:translateY(1px); }
+@media (max-height:560px){ .nobori-crest,.nobori-seal{ display:none; } } /* 横向きなど背の低い画面では題字を優先 */
+@media (max-height:700px){
+  .nobori-crest{ width:26px; height:26px; }
+  .title-bottom{ gap:8px; padding-top:22px; }
+  .title-bottom .btn-gold{ padding:14px 22px; }
+  .title-bottom .btn-lacquer{ padding:12px 20px; }
+}
 
 /* ---------------- 遊び方 ---------------- */
 .howto{ display:grid; grid-template-columns:1fr; gap:8px; width:100%; max-width:340px; text-align:left; }
@@ -119,8 +179,39 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{ outline:2px s
 .store-reveal .presents{ font-size:12px; color:var(--fuji); letter-spacing:.3em; margin-bottom:5px; }
 .store-reveal .store-name{ font-family:var(--serif); font-size:25px; font-weight:800; letter-spacing:.1em; }
 
+/* ---------------- 3Dの見せ場＋下の台（連選び・控室） ----------------
+ * 上の 0〜46% は3Dの神輿を見せる空き。神輿は上から 6〜40% に収まる（mk-stage.js の showShowcase の取り決め）ので、
+ * 様式名の札はその下の 40〜46% の帯に置き、神輿の足元と重ねない。
+ * ほかの文字はすべて下の不透明な台の中に置き、台の中だけを送る */
+.stage-screen{ height:100vh; height:100dvh; padding:0; }
+.showcase-space{ position:relative; flex:0 0 46vh; flex-basis:46dvh; display:flex; align-items:flex-end; justify-content:center; padding:0 16px 4px; pointer-events:none; }
+.showcase-label{ margin:0; max-width:100%; display:flex; align-items:baseline; justify-content:center; flex-wrap:wrap; gap:2px 10px; padding:4px 14px;
+  border-radius:16px; background:rgba(12,8,28,.86); border:1px solid var(--line); font-size:14px; line-height:1.25; color:var(--kinari); text-align:center; }
+.showcase-label b{ font-family:var(--serif); font-size:17px; color:var(--kin-1); letter-spacing:.08em; }
+/* 3Dが使えない端末では、選んだ神輿の絵を大きく出す */
+.showcase-fallback{ position:absolute; left:50%; top:14%; width:min(44vw,180px); transform:translateX(-50%); }
+.showcase-fallback svg{ display:block; width:100%; height:auto; filter:drop-shadow(0 10px 18px rgba(6,4,16,.6)); }
+.stage-sheet{ position:relative; z-index:2; flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+  padding:14px 16px max(12px, env(safe-area-inset-bottom)); border-radius:20px 20px 0 0; border-top:1px solid var(--line-strong);
+  background:linear-gradient(180deg, var(--sheet-hi) 0%, var(--sheet) 40%, #120f29 100%); box-shadow:0 -16px 36px rgba(6,4,16,.6);
+  animation:sheet-up .5s cubic-bezier(.2,.8,.2,1) both; }
+.sheet-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 8px; }
+.sheet-head .display{ text-align:left; font-size:22px; }
+.sheet-head .btn-small{ min-width:0; padding:0 14px; font-size:13px; }
+.sheet-scroll{ flex:1 1 auto; min-height:0; overflow-y:auto; display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px; padding:2px 2px 18px; }
+.sheet-scroll > *{ flex-shrink:0; }
+/* 台の中で続きがあることを、下端を薄くぼかして示す */
+.sheet-scroll,.stage-sheet .team-grid{ -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 22px),transparent); mask-image:linear-gradient(180deg,#000 calc(100% - 22px),transparent); }
+.sheet-actions{ display:flex; flex-direction:column; align-items:center; gap:6px; padding-top:10px; border-top:1px solid var(--line-soft); }
+.sheet-actions .btn-large{ max-width:340px; }
+.sheet-row{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; max-width:340px; }
+.sheet-row .btn-lacquer,.sheet-row .btn-gold{ flex:1; min-width:0; }
+.sheet-row .btn-lacquer{ padding:12px 14px; }
+.sheet-row .btn-gold{ padding:16px 12px; white-space:nowrap; }
+
 /* ---------------- 連選び ---------------- */
-.team-grid{ display:flex; flex-direction:column; gap:10px; flex:1; overflow-y:auto; padding:4px 6px 12px; }
+.team-grid{ display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:0; overflow-y:auto; padding:4px 6px 18px; }
+.team-empty{ margin:0; padding:2px 4px; font-size:14px; line-height:1.6; color:var(--fuji); }
 .team-card{ display:flex; align-items:center; gap:14px; text-align:left; color:var(--kinari); width:100%;
   background:linear-gradient(176deg, var(--panel-hi), var(--panel)); border:1px solid var(--line-strong); border-radius:var(--radius); padding:13px 15px; backdrop-filter:blur(6px); }
 .team-card.selected{ border-color:var(--kin-2); box-shadow:0 0 0 1px var(--kin-2), 0 0 28px rgba(224,182,84,.26); }
@@ -130,16 +221,16 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{ outline:2px s
 .team-card-meta{ font-size:14px; color:var(--fuji); margin-top:4px; line-height:1.5; }
 .team-card-badge{ font-size:12px; padding:5px 10px; border-radius:20px; background:rgba(224,182,84,.14); border:1px solid var(--line); color:var(--kin-1); font-weight:700; white-space:nowrap; }
 .custom-team-card input{ background:rgba(18,12,38,.7); border:1px solid var(--line-strong); border-radius:10px; padding:10px 12px; color:var(--kinari); font-size:16px; width:100%; margin-top:8px; }
-.variant-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+.variant-row{ display:grid; grid-template-columns:repeat(auto-fill,minmax(68px,1fr)); gap:6px; margin-top:8px; }
 .variant-chip{ font-size:13px; font-weight:700; padding:6px 4px 5px; border-radius:9px; border:1px solid var(--line-strong); min-height:44px; background:rgba(18,12,38,.7); color:var(--fuji); display:flex; flex-direction:column; align-items:center; gap:2px; }
-.variant-chip svg{ width:34px; height:34px; }
+.variant-chip svg{ width:42px; height:42px; }
 .variant-chip.sel{ border-color:var(--kin-2); color:var(--kin-1); box-shadow:0 0 12px rgba(224,182,84,.25); }
 
 /* ---------------- 控室 ---------------- */
-.lobby-team-name{ font-size:32px; }
-.lobby-stats{ display:flex; gap:34px; margin:8px 0 12px; }
+.lobby-team-name{ font-size:28px; }
+.lobby-stats{ display:flex; gap:34px; margin:0 0 4px; }
 .stat{ display:flex; flex-direction:column; align-items:center; }
-.stat-num{ font-family:var(--serif); font-size:30px; font-weight:800; font-variant-numeric:tabular-nums; }
+.stat-num{ font-family:var(--serif); font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; }
 .stat-label{ font-size:12px; color:var(--fuji); letter-spacing:.16em; margin-top:3px; }
 .member-list{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:340px; margin:4px 0 8px; }
 .member-chip{ font-size:14px; padding:6px 12px; border-radius:16px; background:rgba(18,12,38,.7); border:1px solid var(--line-soft); animation:rise .35s ease both; }
@@ -183,12 +274,13 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{ outline:2px s
   font-size:64px; letter-spacing:.1em; text-shadow:0 0 30px rgba(255,170,80,.75), 0 4px 4px rgba(6,2,14,.9); opacity:0; }
 .callout.show{ animation:callout-in .5s cubic-bezier(.2,.9,.3,1.3) forwards; }
 .callout.small{ font-size:34px; }
-.callout.huge{ font-size:96px; color:#ffe9a8; }
+.callout.huge{ font-size:min(96px, 25vw); color:#ffe9a8; }
 @keyframes callout-in{ 0%{ opacity:0; transform:scale(1.8); } 30%{ opacity:1; transform:scale(.95); } 50%{ transform:scale(1.02); } 100%{ opacity:1; transform:scale(1); } }
 .callout.fade{ transition:opacity .3s; opacity:0 !important; animation:none; }
 .callout .sub{ display:block; font-size:15px; letter-spacing:.2em; color:var(--kin-1); margin-top:6px; }
-.clash-card{ position:fixed; left:50%; top:47%; transform:translate(-50%,0); z-index:6; pointer-events:none; text-align:center; min-width:250px;
-  background:rgba(14,9,30,.72); border:1px solid var(--line); border-radius:16px; padding:12px 18px; backdrop-filter:blur(6px); animation:rise .35s ease both; }
+/* 中央寄せは左右の余白で行う（出てくる動き rise が transform を上書きして右へずれ、画面からはみ出していたため） */
+.clash-card{ position:fixed; left:16px; right:16px; margin:0 auto; width:fit-content; max-width:360px; top:47%; z-index:6; pointer-events:none; text-align:center; min-width:250px;
+  background:rgba(14,9,30,.84); border:1px solid var(--line); border-radius:16px; padding:12px 18px; backdrop-filter:blur(6px); animation:rise .35s ease both; }
 .clash-card .j{ font-family:var(--serif); font-size:34px; font-weight:800; letter-spacing:.06em; }
 .clash-card .d{ font-size:14px; color:var(--fuji); margin-top:2px; }
 .clash-card .pts{ font-family:var(--serif); font-size:18px; font-weight:800; color:var(--kin-1); margin-top:4px; }
@@ -270,7 +362,9 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{ outline:2px s
 .equip-name .rar{ color:var(--fuji); font-size:12px; }
 .equip-btn{ font-size:13px; padding:9px 13px; border-radius:8px; min-height:44px; min-width:88px; }
 .equip-btn.is-equipped{ background:var(--panel); color:var(--fuji); box-shadow:none; border:1px solid var(--line); }
-.stage-label{ position:relative; z-index:2; text-align:center; color:var(--kin-1); font-family:var(--serif); font-weight:800; font-size:15px; margin:8px 0; text-shadow:0 1px 10px rgba(12,6,30,.8); }
+.stage-label{ position:relative; z-index:2; align-self:center; text-align:center; color:var(--kin-1); font-family:var(--serif); font-weight:800; font-size:15px; margin:8px 0; padding:6px 16px; border-radius:16px; background:var(--scrim); }
+/* 3Dの上に出す見出しの飾り文字は、文字の後ろに暗い下地を敷く */
+.crest-eyebrow.on-stage span{ padding:6px 12px; border-radius:16px; background:var(--scrim); }
 
 .toast{ position:fixed; left:50%; bottom:40px; transform:translateX(-50%); background:var(--shu-deep); color:#fff; font-weight:800; padding:12px 22px; border-radius:24px; z-index:90; box-shadow:0 12px 28px rgba(10,6,24,.55); opacity:0; transition:opacity .2s; font-size:14px; pointer-events:none; max-width:calc(100% - 32px); width:max-content; text-align:center; }
 .toast.show{ opacity:1; }
@@ -352,24 +446,34 @@ body.reduce-motion *,body.reduce-motion *::before,body.reduce-motion *::after{ a
 
   <section id="screen-title" class="screen active">
     <div class="title-scrim"></div>
-    <div class="title-block">
-      <svg class="title-crest rv" style="--d:.05s" viewBox="0 0 88 88"><use href="#kamon"/></svg>
-      <h1 class="display title-main rv" style="--d:.15s"><span class="gold-text">せーの！</span><br><span class="gold-text">神輿バトル</span><span class="title-stamp">祭</span></h1>
-      <p class="title-sub rv" style="--d:.3s">太鼓に揃え、魂をぶつけろ</p>
+    <div class="nobori">
+      <div class="nobori-pole" aria-hidden="true"></div>
+      <div class="nobori-cloth">
+        <svg class="nobori-crest" viewBox="0 0 88 88" aria-hidden="true"><use href="#kamon"/></svg>
+        <h1 class="nobori-title"><span class="nb-sub">せーの！</span><span class="nb-main">神輿バトル</span></h1>
+        <span class="nobori-seal" aria-hidden="true">祭</span>
+      </div>
+    </div>
+    <div class="title-tagline">
+      <p class="title-sub">太鼓に揃え、<br>魂をぶつけろ</p>
+      <p class="title-foot"><span>オンライン対戦</span>・<span>最大16人の連</span></p>
     </div>
     <div class="title-bottom">
-      <button id="titleStartBtn" type="button" class="btn-gold btn-large rv" style="--d:.4s">祭りに参加する</button>
-      <button id="titlePracticeBtn" type="button" class="btn-lacquer btn-large rv" style="--d:.5s">稽古（ひとりで練習）</button>
-      <button id="titleSettingsBtn" type="button" class="btn-text rv" style="--d:.55s">設定（音・タイミング）</button>
-      <div class="title-foot rv" style="--d:.6s">オンライン対戦 ・ 最大16人の連</div>
+      <button id="titleStartBtn" type="button" class="btn-gold btn-large">祭りに参加する</button>
+      <button id="titlePracticeBtn" type="button" class="btn-lacquer btn-large">稽古（ひとりで練習）</button>
+      <div class="title-links">
+        <button id="titleSettingsBtn" type="button" class="btn-small">設定</button>
+        <button id="titleHowtoBtn" type="button" class="btn-small">遊び方</button>
+      </div>
     </div>
   </section>
 
   <section id="screen-login" class="screen">
+    <div class="screen-dim"></div>
     <div class="center-col">
       <div class="crest-eyebrow rv" style="--d:.05s"><span>参加登録</span></div>
       <h2 class="display rv" style="--d:.12s;font-size:23px;">ニックネームで参加</h2>
-      <p class="sub-copy rv" style="--d:.2s;margin:4px 0 16px;max-width:300px;">全国のプレイヤーとリアルタイム対戦！<br>戦績・コイン・衣装はこの端末に保存されます。</p>
+      <p class="sub-copy rv" style="--d:.2s;margin:4px 0 16px;max-width:330px;">全国のプレイヤーとリアルタイム対戦！<br>戦績・コイン・衣装はこの端末に保存されます。</p>
       <label for="nickInput" class="sr-only">ニックネーム</label>
       <input type="text" id="nickInput" class="nick-input rv" style="--d:.28s" maxlength="10" placeholder="ニックネーム（10文字まで）">
       <button id="joinBtn" type="button" class="btn-gold btn-large rv" style="--d:.36s;max-width:290px;margin-top:12px;">オンラインで参加</button>
@@ -382,6 +486,7 @@ body.reduce-motion *,body.reduce-motion *::before,body.reduce-motion *::after{ a
   </section>
 
   <section id="screen-qr" class="screen">
+    <div class="screen-dim"></div>
     <div class="qr-wrap">
       <div class="qr-box rv" style="--d:.05s"><div class="qr-grid" id="qrGrid" role="img" aria-label="ゲームを開くQRコード"></div><div class="qr-scanline"></div></div>
       <p class="qr-caption rv" style="--d:.15s" id="qrCaption">店舗のQRコードを読み取り中…</p>
@@ -390,33 +495,54 @@ body.reduce-motion *,body.reduce-motion *::before,body.reduce-motion *::after{ a
     </div>
   </section>
 
-  <section id="screen-teamselect" class="screen">
-    <div class="crest-eyebrow rv" style="--d:.05s"><span>連に参加</span></div>
-    <h2 class="display rv" style="--d:.12s;font-size:23px;margin-bottom:4px;">どの連で担ぐ？</h2>
-    <button id="teamRefreshBtn" type="button" class="btn-text rv" style="--d:.18s;align-self:center;">連の一覧を更新</button>
-    <div class="team-grid" id="teamGrid"></div>
-    <button id="teamConfirmBtn" type="button" class="btn-gold btn-large rv" style="--d:.3s;margin-top:8px;">この連で参加する</button>
-    <button id="teamMypageBtn" type="button" class="btn-text rv" style="--d:.4s;align-self:center;">マイページ（コイン・衣装）を見る</button>
+  <section id="screen-teamselect" class="screen stage-screen">
+    <div class="showcase-space">
+      <div class="showcase-fallback hidden" id="teamShowcaseFallback" aria-hidden="true"></div>
+      <p class="showcase-label" id="teamShowcaseLabel"></p>
+    </div>
+    <div class="stage-sheet">
+      <div class="sheet-head">
+        <h2 class="display">どの連で担ぐ？</h2>
+        <button id="teamRefreshBtn" type="button" class="btn-small" aria-label="連の一覧を更新">一覧を更新</button>
+      </div>
+      <div class="team-grid" id="teamGrid"></div>
+      <div class="sheet-actions">
+        <div class="sheet-row">
+          <button id="teamConfirmBtn" type="button" class="btn-gold">この連で参加する</button>
+          <button id="teamMypageBtn" type="button" class="btn-small" aria-label="マイページ（コイン・衣装）">マイページ</button>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section id="screen-lobby" class="screen">
-    <div class="center-col">
-      <div class="crest-eyebrow rv" style="--d:.05s"><span>控室</span></div>
-      <h2 id="lobbyTeamName" class="display lobby-team-name gold-text rv" style="--d:.12s"></h2>
-      <p id="lobbyStreak" class="lobby-streak hidden"></p>
-      <div class="lobby-stats rv" style="--d:.2s">
-        <div class="stat"><span class="stat-num gold-text" id="lobbySize"></span><span class="stat-label">人の連</span></div>
-        <div class="stat"><span class="stat-num gold-text" id="lobbyLevel"></span><span class="stat-label">神輿の格</span></div>
+  <section id="screen-lobby" class="screen stage-screen">
+    <div class="showcase-space">
+      <div class="showcase-fallback hidden" id="lobbyShowcaseFallback" aria-hidden="true"></div>
+      <p class="showcase-label" id="lobbyShowcaseLabel"></p>
+    </div>
+    <div class="stage-sheet">
+      <div class="sheet-scroll">
+        <div class="crest-eyebrow" style="margin:0;"><span>控室</span></div>
+        <h2 id="lobbyTeamName" class="display lobby-team-name gold-text"></h2>
+        <p id="lobbyStreak" class="lobby-streak hidden"></p>
+        <div class="lobby-stats">
+          <div class="stat"><span class="stat-num gold-text" id="lobbySize"></span><span class="stat-label">人の連</span></div>
+          <div class="stat"><span class="stat-num gold-text" id="lobbyLevel"></span><span class="stat-label">神輿の格</span></div>
+        </div>
+        <div class="member-list" id="lobbyMembers"></div>
+        <div class="howto panel">
+          <div class="howto-row"><span class="howto-num">一</span><span><b>太鼓の拍</b>に合わせて画面をタップ。仲間と<b>0.1秒</b>で揃うほど強い</span></div>
+          <div class="howto-row"><span class="howto-num">二</span><span>揃い続けると<b>勢い</b>が溜まり、相手の神輿を押し込む</span></div>
+          <div class="howto-row"><span class="howto-num">三</span><span>太鼓が止まったら「<b>せー・の・！</b>」の「！」で全員で一撃</span></div>
+        </div>
       </div>
-      <div class="member-list" id="lobbyMembers"></div>
-      <div class="howto panel rv" style="--d:.28s">
-        <div class="howto-row"><span class="howto-num">一</span><span><b>太鼓の拍</b>に合わせて画面をタップ。仲間と<b>0.1秒</b>で揃うほど強い</span></div>
-        <div class="howto-row"><span class="howto-num">二</span><span>揃い続けると<b>勢い</b>が溜まり、相手の神輿を押し込む</span></div>
-        <div class="howto-row"><span class="howto-num">三</span><span>太鼓が止まったら「<b>せー・の・！</b>」の「！」で全員で一撃</span></div>
+      <div class="sheet-actions">
+        <button id="lobbyReadyBtn" type="button" class="btn-gold btn-large">準備完了</button>
+        <div class="sheet-row">
+          <button id="lobbyQrBtn" type="button" class="btn-lacquer">QRで仲間を呼ぶ</button>
+          <button id="lobbyLeaveBtn" type="button" class="btn-text">連を抜ける</button>
+        </div>
       </div>
-      <button id="lobbyReadyBtn" type="button" class="btn-gold btn-large rv" style="--d:.36s;max-width:290px;margin-top:12px;">準備完了</button>
-      <button id="lobbyQrBtn" type="button" class="btn-lacquer btn-large rv" style="--d:.42s;max-width:290px;">QRで仲間を呼ぶ</button>
-      <button id="lobbyLeaveBtn" type="button" class="btn-text rv" style="--d:.5s">連を抜ける</button>
     </div>
     <div id="lobbyQrModal" class="searching hidden" style="background:rgba(14,9,30,.86);" role="dialog" aria-modal="true" aria-labelledby="lobbyQrTitle">
       <div class="panel" style="max-width:300px;text-align:center;">
@@ -429,6 +555,7 @@ body.reduce-motion *,body.reduce-motion *::before,body.reduce-motion *::after{ a
   </section>
 
   <section id="screen-ad" class="screen">
+    <div class="screen-dim"></div>
     <div class="crest-eyebrow rv" style="--d:.05s"><span id="adEyebrow">まもなく入場</span></div>
     <div class="ad-canvas-wrap rv" style="--d:.15s"><canvas id="adCanvas" width="360" height="220" role="img" aria-label="広告"></canvas></div>
     <div class="ad-progress-track"><div class="ad-progress-fill" id="adProgressFill"></div></div>
@@ -513,7 +640,7 @@ body.reduce-motion *,body.reduce-motion *::before,body.reduce-motion *::after{ a
   </section>
 
   <section id="screen-equip" class="screen">
-    <div class="crest-eyebrow" style="position:fixed;top:max(18px,env(safe-area-inset-top));left:0;right:0;z-index:2;"><span>マイアバター</span></div>
+    <div class="crest-eyebrow on-stage" style="position:fixed;top:max(18px,env(safe-area-inset-top));left:0;right:0;z-index:2;"><span>マイアバター</span></div>
     <p class="stage-label" id="equipStageLabel"></p>
     <div class="equip-list" id="equipList"></div>
     <button id="equipMoreGachaBtn" type="button" class="btn-lacquer" style="margin-top:10px;position:relative;z-index:2;">もう1回ガチャを引く</button>
@@ -586,12 +713,12 @@ body.reduce-motion *,body.reduce-motion *::before,body.reduce-motion *::after{ a
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-<script src="js/mk-core.js?v=2.1.1"></script>
-<script src="js/mk-gfx.js?v=2.1.1"></script>
-<script src="js/mk-mikoshi.js?v=2.1.1"></script>
-<script src="js/mk-avatar.js?v=2.1.1"></script>
-<script src="js/mk-venue.js?v=2.1.1"></script>
-<script src="js/mk-stage.js?v=2.1.1"></script>
-<script src="js/mk-game.js?v=2.1.1"></script>
+<script src="js/mk-core.js?v=2.2.0"></script>
+<script src="js/mk-gfx.js?v=2.2.0"></script>
+<script src="js/mk-mikoshi.js?v=2.2.0"></script>
+<script src="js/mk-avatar.js?v=2.2.0"></script>
+<script src="js/mk-venue.js?v=2.2.0"></script>
+<script src="js/mk-stage.js?v=2.2.0"></script>
+<script src="js/mk-game.js?v=2.2.0"></script>
 </body>
 </html>

@@ -31,6 +31,8 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   /* 画面ファイルを読み、外部スクリプトを中身に差し替えて jsdom で動かす */
   let html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
+  /* 画面の js はすべて同じ版番号で読む（片方だけ古い版がキャッシュに残らないように） */
+  const versions = new Set([...html.matchAll(/js\/[\w-]+\.js\?v=([\w.]+)/g)].map(m => m[1]));
   const three = fs.readFileSync(require.resolve('three/build/three.min.js'), 'utf8');
   html = html.replace('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>', () => '<script>' + three + '</script>');
   html = html.replace(/<script src="https:\/\/cdnjs[^"]*qrcode[^"]*"><\/script>/, '');
@@ -84,6 +86,10 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   await sleep(500);
   ok(active() === 'screen-title', 'starts on title');
+  ok(versions.size === 1, 'all scripts share one version: ' + [...versions].join(','));
+  /* タイトル（幟）: 題字は縦書きの見出し1つとして読み上げられ、主・副・設定・遊び方のボタンがある */
+  ok(document.querySelector('#screen-title h1').textContent === 'せーの！神輿バトル', 'title heading reads as one name');
+  ok(['titleStartBtn', 'titlePracticeBtn', 'titleSettingsBtn', 'titleHowtoBtn'].every(id => document.getElementById(id)), 'title buttons present');
 
   /* 3Dの組み立てスモークテスト（WebGL無しでもジオメトリ・骨格・衣装は作れる） */
   const smoke = T().selfTest();
@@ -121,6 +127,12 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
   T().stopPractice();
   await until(() => active() === 'screen-title', 3000, 'practice stopped → title');
 
+  /* タイトルの「遊び方」: いつでも開けて、閉じるとタイトルに戻る */
+  click('titleHowtoBtn');
+  ok(isShown('howtoModal') && document.getElementById('howtoStartBtn').textContent === '閉じる', 'howto opens from title');
+  click('howtoStartBtn');
+  ok(!isShown('howtoModal') && active() === 'screen-title', 'howto closes back to title');
+
   /* 設定: 音のタイミング調整（±150ms・10ms刻み・保存）と、動きを減らすの手動切り替え */
   click('titleSettingsBtn');
   ok(isShown('settingsModal'), 'settings opened from title');
@@ -152,11 +164,31 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
   ok(true, 'registered via UI');
   await until(() => active() === 'screen-teamselect', 8000, 'teamselect');
 
-  /* 連の旗揚げ: 八角の神輿を選ぶ */
-  const chip = document.querySelector('.variant-chip[data-v="hakkaku"]');
-  ok(chip !== null, 'variant chip rendered');
-  chip.dispatchEvent(new window.Event('click', { bubbles: true }));
+  /* 連選び: 上部に「今選んでいる神輿」を見せる。3Dが無い jsdom では大きな絵で代わりに見せる */
+  const label = id => document.getElementById(id).textContent;
+  ok(label('teamShowcaseLabel').includes('黄金') && label('teamShowcaseLabel').includes('江戸型'), 'teamselect labels the shown style: ' + label('teamShowcaseLabel'));
+  ok(isShown('teamShowcaseFallback') && document.querySelector('#teamShowcaseFallback svg') !== null, 'teamselect fallback drawing without 3D');
+  /* 3Dの見せ場（MK.stage.showShowcase と戻り値の setVariant）の呼び方を、置き換えた場面で確かめる */
+  const S = window.MK.stage;
+  const savedStage = { ready: S.ready, mode: S.mode, showShowcase: S.showShowcase, stop: S.stop, showTitle: S.showTitle };
+  const stageCalls = [];
+  S.ready = true; S.mode = 'off';
+  S.showShowcase = o => { stageCalls.push(['show', o.variant, o.level, o.teamName]); S.mode = 'showcase'; return { setVariant: (v, l, n) => stageCalls.push(['set', v, l, n]) }; };
+  S.stop = () => { S.mode = 'off'; };
+  S.showTitle = () => { S.mode = 'title'; return true; };
+
+  /* 連の旗揚げ: 山車 → 八角 と選び直す（2回目からは作り直さず setVariant で切り替える） */
+  const pickVariant = v => document.querySelector('.variant-chip[data-v="' + v + '"]').dispatchEvent(new window.Event('click', { bubbles: true }));
+  ok(document.querySelector('.variant-chip[data-v="hakkaku"]') !== null, 'variant chip rendered');
+  pickVariant('dashi');
+  await sleep(50);
+  pickVariant('hakkaku');
   await sleep(100);
+  ok(stageCalls.length >= 2 && stageCalls[0][0] === 'show' && stageCalls[0][1] === 'dashi' && stageCalls[0][2] === 0, 'showcase opens with the picked style: ' + JSON.stringify(stageCalls[0]));
+  ok(JSON.stringify(stageCalls[stageCalls.length - 1]) === JSON.stringify(['set', 'hakkaku', 0, 'みこし太郎の連']) && stageCalls.filter(c => c[0] === 'show').length === 1, 'style change uses setVariant: ' + JSON.stringify(stageCalls));
+  ok(label('teamShowcaseLabel').includes('八角') && label('teamShowcaseLabel').includes('築地'), 'label follows the picked style: ' + label('teamShowcaseLabel'));
+  ok(!isShown('teamShowcaseFallback'), 'fallback drawing hidden while 3D showcase is on');
+  ok(document.querySelector('.variant-chip[data-v="hakkaku"]').getAttribute('aria-pressed') === 'true', 'picked chip marked pressed');
   const input = document.getElementById('customTeamInput');
   input.value = '花火連';
   input.dispatchEvent(new window.Event('input', { bubbles: true }));
@@ -165,6 +197,11 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
   ok(document.getElementById('lobbyTeamName').textContent === '花火連', 'team name shown');
   ok(document.getElementById('lobbyMembers').textContent.includes('みこし太郎'), 'own name in member list');
   ok(document.getElementById('lobbyMembers').textContent.includes('助っ人 7人'), 'helpers shown');
+  /* 控室: 上部に自分の連の神輿（様式・格・連名）を見せる */
+  ok(JSON.stringify(stageCalls[stageCalls.length - 1]) === JSON.stringify(['set', 'hakkaku', 0, '花火連']), 'lobby shows own team mikoshi: ' + JSON.stringify(stageCalls[stageCalls.length - 1]));
+  ok(label('lobbyShowcaseLabel').includes('八角'), 'lobby labels own style: ' + label('lobbyShowcaseLabel'));
+  /* ここから先の試合は本物の場面（3Dなし）で進める */
+  Object.assign(S, savedStage);
 
   /* 準備完了 → CPU連とマッチ → 試合前広告 → 入場 */
   click('lobbyReadyBtn');

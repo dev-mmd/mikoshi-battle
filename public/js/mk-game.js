@@ -28,7 +28,10 @@
     /* 読み上げ・キーボード操作のため、新しい画面の見出しへフォーカスを移す */
     var h=el && el.querySelector('h1,h2');
     if(h && id!=='screen-match'){ h.setAttribute('tabindex','-1'); try{ h.focus({ preventScroll:true }); }catch(e){} }
+    /* 画面ごとの3D: タイトルは境内の神輿、連選び・控室は選んだ神輿を上部で見せる */
     if(id==='screen-teamselect') buildTeamSelect();
+    else if(id==='screen-lobby') lobbyShowcase();
+    else if(id==='screen-title') titleStage();
   }
   function showScreen(id, instant){
     if(activeScreen()===id) return;
@@ -236,11 +239,14 @@
   $('howtoModal').addEventListener('keydown', function(e){ if(e.key==='Escape'){ howtoNext=null; closeModal('howtoModal'); } else trapFocus(e); });
 
   /* ================= タイトル ================= */
+  function titleStage(){
+    if((STAGE.ready || STAGE.init($('threeCanvas'))) && STAGE.mode!=='title') STAGE.showTitle();
+  }
   function enterTitle(){
-    rawShow('screen-title');
-    if(STAGE.ready || STAGE.init($('threeCanvas'))) STAGE.showTitle();
+    rawShow('screen-title'); /* 3Dのタイトル場面は rawShow の中で出す */
     A.setCrowd(0.4);
   }
+  $('titleHowtoBtn').addEventListener('click', function(){ tick(); showHowto(null); });
   $('titleStartBtn').addEventListener('click', function(){
     A.init(); A.select();
     state.practice=false; TX=NET;
@@ -356,12 +362,57 @@
     }
     return '<svg class="'+c+'" viewBox="0 0 60 60">'+base+roof+body+'</svg>';
   }
+
+  /* ---- 選んだ神輿を画面の上部で見せる（連選び・控室）。3Dが使えない端末では大きな絵で代わりに見せる ---- */
+  var VARIANT_DESC={
+    classic:'江戸型・黄金の宮神輿', kuro:'漆黒の宮神輿', shiro:'白と朱の宮神輿',
+    rokkaku:'京都祇園の六角神輿', hakkaku:'築地の八角神輿', shinmei:'神明造の白木神輿',
+    futon:'大阪・堺の布団太鼓', chousa:'香川・観音寺の太鼓台', dashi:'車輪つき二層の曳山'
+  };
+  var showcaseCtl=null, showcaseKey=null;
+  function setShowcase(prefix, variant, level, teamName){
+    if(!C.VARIANTS[variant]) variant='classic';
+    level=level||0; teamName=teamName||'';
+    $(prefix+'ShowcaseLabel').innerHTML='<b>'+U.escapeHtml(C.VARIANTS[variant].label)+'</b><span>'+U.escapeHtml(VARIANT_DESC[variant]||'')+'</span>';
+    var shown=false;
+    /* showShowcase は mk-stage.js 側の場面。無い版・3Dが使えない端末では呼ばない */
+    if(typeof STAGE.showShowcase==='function' && (STAGE.ready || STAGE.init($('threeCanvas')))){
+      var key=variant+'|'+level+'|'+teamName;
+      if(STAGE.mode==='showcase' && showcaseCtl && typeof showcaseCtl.setVariant==='function'){
+        if(key!==showcaseKey) showcaseCtl.setVariant(variant, level, teamName);
+      } else showcaseCtl=STAGE.showShowcase({ variant:variant, level:level, teamName:teamName });
+      showcaseKey=key;
+      shown=STAGE.mode==='showcase';
+    } else if(STAGE.ready){
+      /* 見せ場の場面が無いときは、後ろでタイトルの3Dを動かし続けない（文字と重なるため） */
+      STAGE.stop(); showcaseCtl=null; showcaseKey=null;
+    }
+    var fb=$(prefix+'ShowcaseFallback');
+    fb.innerHTML=shown?'':miniSvg(variant, 'showcase-svg');
+    fb.classList.toggle('hidden', shown);
+  }
+  /* 連選びで「今選んでいる神輿」: 既存の連ならその連の様式と格、旗揚げなら選んでいる様式 */
+  function teamShowcase(){
+    if(activeScreen()!=='screen-teamselect') return;
+    var t=null;
+    if(!state.selectedCreate && state.selectedTeamId){
+      (state.teamList||[]).forEach(function(x){ if(x.id===state.selectedTeamId) t=x; });
+    }
+    if(t) setShowcase('team', t.variant, t.level||0, t.name);
+    else setShowcase('team', state.customVariant, 0, (state.customTeamName||'').trim() || ((state.name||'')+'の連'));
+  }
+  function lobbyShowcase(){ setShowcase('lobby', state.variant, state.level, state.teamName); }
+
   var teamGrid=$('teamGrid');
   function buildTeamSelect(){
+    /* 作り直しても、一覧の送り位置と押したボタンのフォーカスは保つ（台の中だけを送るため） */
+    var keepTop=teamGrid.scrollTop, ae=document.activeElement, keepFocus=null;
+    if(ae && teamGrid.contains(ae) && ae.dataset){ keepFocus=ae.id==='customTeamInput'?'#customTeamInput':ae.dataset.v?('.variant-chip[data-v="'+ae.dataset.v+'"]'):(ae.dataset.id?('.team-card[data-id="'+ae.dataset.id+'"]'):null); }
     teamGrid.innerHTML='';
     var list=state.teamList||[];
     list.forEach(function(team){
       var card=document.createElement('button'); card.type='button';
+      card.dataset.id=String(team.id).replace(/[^\w-]/g,'');
       card.className='team-card'+(state.selectedTeamId===team.id?' selected':'');
       card.setAttribute('aria-pressed', state.selectedTeamId===team.id?'true':'false');
       card.innerHTML=miniSvg(team.variant)+'<div class="team-card-info"><div class="team-card-name">'+U.escapeHtml(team.name)+'</div>'+
@@ -371,8 +422,9 @@
       teamGrid.appendChild(card);
     });
     if(!list.length){
-      var empty=document.createElement('div'); empty.className='team-card'; empty.style.justifyContent='center';
-      empty.innerHTML='<div class="team-card-meta">いま募集中の連はありません。新しく旗揚げしましょう！</div>';
+      /* 空のときは1行の案内だけにして、下の旗揚げ（様式選び）を見える所に置く */
+      var empty=document.createElement('p'); empty.className='team-empty';
+      empty.textContent='いま募集中の連はありません';
       teamGrid.appendChild(empty);
     }
     var custom=document.createElement('div');
@@ -385,11 +437,15 @@
     teamGrid.appendChild(custom);
     var input=$('customTeamInput');
     input.value=state.customTeamName||'';
-    input.addEventListener('focus', function(){ state.selectedCreate=true; state.selectedTeamId=null; markSelected(); });
+    input.addEventListener('focus', function(){ state.selectedCreate=true; state.selectedTeamId=null; markSelected(); teamShowcase(); });
     input.addEventListener('input', function(){ state.customTeamName=input.value; });
+    input.addEventListener('change', teamShowcase); /* 名前は入力を終えたときに神輿の幕へ反映（1文字ごとに作り直さない） */
     Array.prototype.forEach.call(custom.querySelectorAll('.variant-chip'), function(btn){
       btn.onclick=function(){ tick(); state.customVariant=btn.dataset.v; state.selectedCreate=true; state.selectedTeamId=null; buildTeamSelect(); };
     });
+    teamGrid.scrollTop=keepTop;
+    if(keepFocus){ var f=teamGrid.querySelector(keepFocus); if(f) try{ f.focus({ preventScroll:true }); }catch(e){} }
+    teamShowcase();
   }
   function markSelected(){
     var cards=teamGrid.querySelectorAll('.team-card');
@@ -428,6 +484,7 @@
     if(back) state.continueUntil=0;
     var a=activeScreen();
     if(a==='screen-teamselect' || a==='screen-qr') showScreen('screen-lobby');
+    else if(a==='screen-lobby') lobbyShowcase(); /* 勝ち進みで格が上がったときなど、上部の神輿を今の様子に合わせる */
     else if(a==='screen-mypage') updateMypageRetry();
     else if(a==='screen-result' && back) resultBackToLobby();
     /* 「次の相手を探しています…」の最中に控室へ戻された（受付の締切ぎりぎりに押した等）なら控室を出す。
@@ -761,6 +818,7 @@
   function onBattle(msg){
     var m=state.match; if(!m) return;
     m.battle=msg; m.battleAt=performance.now();
+    hud.clashCard.classList.add('hidden'); /* 決着の大きな文字と、最後の番のぶつけの札を重ねない */
     setScores(m, msg.yourPower, msg.enemyPower);
     if(m.arena){ m.arena.setRhythm(false); m.arena.finale(msg.win); }
     callout(msg.win?'勝鬨！':'無念…', msg.win?'huge':'', 2600, Math.round(msg.yourPower)+' 対 '+Math.round(msg.enemyPower));
